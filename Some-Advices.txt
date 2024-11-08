@@ -1,0 +1,7 @@
+From Anoushka Sen (Geek 6 Mem)
+1) Excellent presentation skills - being able to explain the problem, current solutions to the problem, how you are better than the current alternatives, being able to explain your solution in a easy to understand format without overcomplicating things (that is a mistake we made that our initial solution was wayyy too complex) 
+2) There will be 3 judging rounds - vv imp that after every round you improve your solution based on feedback, judges will give feedback so make sure you improve model after each round, after each round of judging remove features they think unnecessary, build features they think are necessary and explain in simple clear terms
+3) No solution is perfect, it is key that you understand where you lack based on the judges feedback, ask them any questions or advice you need on how to improve your solution, they are more like mentors than judges
+ALL THE BEST
+
+No that doesn't make a difference, focus on finding the best possible solution first, a prototype works, doesn't have to be fullstack/deployed
