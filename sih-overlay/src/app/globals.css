@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#map .ol-zoom .ol-zoom-in{
+    background: linear-gradient(90deg, #4CAF50, #2E8B57);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    
+}
+#map .ol-zoom{
+    z-index:100;
+    position:relative;
+}
+
+#map .ol-zoom .ol-zoom-out{
+    background: linear-gradient(90deg, #4CAF50, #2E8B57);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    
+}
+
+
+#map .ol-zoomslider {
+    top: 8px;
+    left: auto;
+    right: 8px;
+    background-color: rgba(255,69,0,0.2);
+    width: 200px;
+    height: 15px;
+    padding: 0;
+    box-shadow: 0 0 5px rgb(255,69,0);
+    border-radius: 7.5px;
+  }
+
+  #map .ol-zoomslider:hover {
+    background-color: rgba(255,69,0,0.3);
+  }
+
+  #map .ol-zoomslider-thumb {
+    height: 15px;
+    width: 15px;
+    margin: 0;
+    filter: none;
+    background-color: rgba(255,69,0,0.6);
+    border-radius: 7.5px;
+  }
+  #map a.ol-zoomslider-handle:hover {
+    background-color: rgba(255,69,0,0.7);
+  }
