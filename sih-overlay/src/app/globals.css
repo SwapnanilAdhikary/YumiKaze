@@ -35,6 +35,7 @@
 }
 
 
+
 #map .ol-zoomslider {
     top: 8px;
     left: auto;
@@ -45,6 +46,7 @@
     padding: 0;
     box-shadow: 0 0 5px rgb(255,69,0);
     border-radius: 7.5px;
+    position: relative;
   }
 
   #map .ol-zoomslider:hover {
@@ -56,7 +58,8 @@
     width: 15px;
     margin: 0;
     filter: none;
-    background-color: rgba(255,69,0,0.6);
+    position: relative;
+    background-color: #4CAF50;
     border-radius: 7.5px;
   }
   #map a.ol-zoomslider-handle:hover {
