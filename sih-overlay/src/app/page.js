@@ -5,97 +5,120 @@ import { OSM } from 'ol/source';
 import TileLayer from 'ol/layer/Tile';
 import { Overlay, View } from 'ol';
 import { fromLonLat } from 'ol/proj';
-import Feature from 'ol/Feature.js';
-import {Vector as VectorLayer} from 'ol/layer.js';
-import {Vector as VectorSource} from 'ol/source.js';
-import {fromExtent} from 'ol/geom/Polygon.js';
-import {ZoomSlider} from 'ol/control.js';
+import Feature from 'ol/Feature';
+import { Vector as VectorLayer } from 'ol/layer';
+import { Vector as VectorSource } from 'ol/source';
+import { fromExtent } from 'ol/geom/Polygon';
+import { ZoomSlider } from 'ol/control';
 
 export default function Home() {
-
   useEffect(() => {
-		const container = document.getElementById('inter');
+    const container = document.getElementById('inter');
 
-		const overlay = new Overlay({
-			element: container,
-			autoPan: {
-				animation: {
-					duration: 250,
-				},
-			},
+    // Create overlay positioned over India
+    const overlay = new Overlay({
+      element: container,
+      autoPan: {
+        animation: {
+          duration: 250,
+        },
+      },
       positioning: 'center-center',
       stopEvent: true,
-      position: fromLonLat([28.9629, 23.5937]),
-	 
-		});
+      position: fromLonLat([78.9629, 20.5937]), // Centered over India
+    });
 
-		const osmLayer = new TileLayer({
-			preload: Infinity,
-			source: new OSM(),
-		});
-		const vectorLayer = new VectorLayer({
-			source: new VectorSource({
-			  features: [
-				new Feature(
-				  // Here a `Geometry` is expected, e.g. a `Polygon`, which has a handy function to create a rectangle from bbox coordinates
-				  fromExtent([-1000000, 5000000, 3000000, 7000000]), // minX, minY, maxX, maxY
-				)
-			]
-		}
-	)
-}
-		)
+    // Initialize the map layers
+    const osmLayer = new TileLayer({
+      preload: Infinity,
+      source: new OSM(),
+    });
 
-		const map = new Map({
-			target: 'map', 
-			layers: [osmLayer,vectorLayer], 
-			view: new View({
-				center: fromLonLat([78.9629, 20.5937]), 
-				zoom: 5, 
-			}),
-			overlays: [overlay],
-		});
-		// map.getView().setMinZoom(5);
-		const zoomslider = new ZoomSlider();
-		map.addControl(zoomslider);
-		// map.getView().setMaxZoom(8);
-		const adjustVideoSize = () => {
-			const zoom = map.getView().getZoom();
-			console.log(zoom)
-			const scaleFactor = zoom ? Math.pow(2, zoom - 4) : 1; // Adjust scale factor as needed
-			console.log(scaleFactor)
-			const videoWidth = 750 * scaleFactor;
-			const videoHeight = 500 * scaleFactor;
-			console.log(videoHeight)
-			console.log(videoWidth)
-	  
-			container.style.width = `${videoWidth}px`;
-			container.style.height = `${videoHeight}px`;
-			// container.style.transform = `translate(-${videoWidth / 2}px, -${videoHeight / 2}px)`; // Center the video
-		  };
-	  
-		  // Attach event listener to adjust video size on zoom
-		  map.getView().on('change:resolution', adjustVideoSize);
-	  
-		  // Initial adjustment
-		  adjustVideoSize();
-		
+    const vectorLayer = new VectorLayer({
+      source: new VectorSource({
+        features: [
+          new Feature(
+            fromExtent([-1000000, 5000000, 3000000, 7000000]) // Example extent
+          ),
+        ],
+      }),
+    });
 
-		return () => map.setTarget(null); // Clean up map on component unmount
-	}, []);
+    // Create the map
+    const map = new Map({
+      target: 'map',
+      layers: [osmLayer, vectorLayer],
+      view: new View({
+        center: fromLonLat([78.9629, 20.5937]),
+        zoom: 5,
+        //minZoom: 5,
+        //maxZoom: 8,
+      }),
+      overlays: [overlay],
+    });
 
+    // Add zoom slider control
+    map.addControl(new ZoomSlider());
 
+    const adjustVideoSizeAndPosition = () => {
+      const zoom = map.getView().getZoom();
+      
+      // Update overlay position to center over India
+      overlay.setPosition(fromLonLat([78.9629, 20.5937]));
 
-	return (
-		<>
-			<div
-				style={{ height: '900px', width: '100%' }}
-				id="map"
-				className="map-container relativ z-1"
-			/>
-			<video id='inter' className='opacity-100 scale-x-75' width="750" height="500" style={{pointerEvents: 'none'}} >
-				<source src="inter2.mp4" type="video/mp4" />
-			</video>
-		</>
-	);
+      // Set video size based on zoom level
+    //   if (zoom > 5) {
+    //     Object.assign(container.style, {
+    //       width: '100vw',
+    //       height: '100vh',
+    //       position: 'absolute',
+    //       top: '0',
+    //       left: '0',
+    //     });
+    //   } else {
+        const scaleFactor = Math.pow(2, zoom - 4);
+        const videoWidth = Math.max(300, 750 * scaleFactor); // Minimum width constraint
+        const videoHeight = Math.max(200, 500 * scaleFactor); // Minimum height constraint
+        console.log(videoWidth)
+		console.log(videoHeight)
+		console.log(zoom)
+        Object.assign(container.style, {
+          width: `${videoWidth}px`,
+          height: `${videoHeight}px`,
+          position: 'relative', // Reset position if not full screen
+        });
+      };
+
+    // Attach event listener to adjust video size and position on zoom
+    map.getView().on('change:resolution', adjustVideoSizeAndPosition);
+
+    // Initial adjustment
+    adjustVideoSizeAndPosition();
+
+    return () => {
+      map.setTarget(null); // Clean up map on component unmount
+    };
+  }, []);
+
+  return (
+    <>
+      <div style={{ height: '900px', width: '100%' }} id="map" className="map-container relative z-1" />
+      <video 
+        id='inter' 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          objectFit: 'cover', 
+          pointerEvents: 'none',
+          opacity: 0.65,
+        }} 
+        autoPlay 
+        loop 
+        muted 
+      >
+        <source src="inter2.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+    </>
+  );
 }
