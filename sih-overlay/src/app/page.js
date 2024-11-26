@@ -24,7 +24,7 @@ export default function Home() {
         },
       },
       positioning: 'center-center',
-      stopEvent: true,
+      stopEvent: false,
       position: fromLonLat([78.9629, 20.5937]), // Centered over India
     });
 
@@ -64,7 +64,7 @@ export default function Home() {
       const zoom = map.getView().getZoom();
       
       // Update overlay position to center over India
-      overlay.setPosition(fromLonLat([78.9629, 20.5937]));
+    //   overlay.setPosition(fromLonLat([78.9629, 20.5937]));
 
       // Set video size based on zoom level
     //   if (zoom > 5) {
@@ -94,15 +94,29 @@ export default function Home() {
 
     // Initial adjustment
     adjustVideoSizeAndPosition();
+    const handleKeyPress = (event) => {
+      const view = map.getView();
+      let currentZoom = view.getZoom();
+
+      if (event.key === '+') {
+        view.setZoom(currentZoom + 1); // Zoom in
+      } else if (event.key === '-') {
+        view.setZoom(currentZoom - 1); // Zoom out
+      }
+    };
+
+    document.addEventListener('keypress', handleKeyPress);
+
 
     return () => {
+      document.removeEventListener('keypress', handleKeyPress);
       map.setTarget(null); // Clean up map on component unmount
     };
   }, []);
 
   return (
     <>
-      <div style={{ height: '900px', width: '100%' }} id="map" className="map-container relative z-1" />
+      <div style={{ height: '900px', width: '100%',pointerEvents:'all', }} id="map" className="map-container relative z-1" />
       <video 
         id='inter' 
         style={{ 
@@ -116,7 +130,7 @@ export default function Home() {
         loop 
         muted 
       >
-        <source src="inter2.mp4" type="video/mp4" />
+        <source src="inter2.mp4" type="video/mp4" style={{pointerEvents:'none',}}/>
         Your browser does not support the video tag.
       </video>
     </>
