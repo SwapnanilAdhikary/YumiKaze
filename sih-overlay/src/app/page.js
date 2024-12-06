@@ -14,58 +14,65 @@ import { Vector as VectorSource } from 'ol/source';
 import { ZoomSlider } from 'ol/control';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import Film from '../../utils/FILM Server';
+import Film, { interpolateFrames } from '../../utils/FILM Server';
 import FAL from '../../utils/FAL server';
 import GPU from '../../utils/GPU';
-import { FastForward } from 'lucide-react';
+import { AudioWaveform, FastForward } from 'lucide-react';
+import axios from 'axios';
 
-async function moveFile(cnt) {
-  try {
-    const response = await fetch("api/interpolatedApi", {
-      // Ensure the path is correct
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ cnt }), // Send the count in the request body
-    });
+// async function moveFile(cnt) {
+//   try {
+//     const response = await fetch("api/interpolatedApi", {
+//       // Ensure the path is correct
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({ cnt }), // Send the count in the request body
+//     });
 
-    const data = await response.json();
+//     const data = await response.json();
 
-    if (response.ok) {
-      console.log("File moved successfully:", data.message);
-      return true;
-    } else {
-      console.error("Error:", data.error);
-      return false;
-    }
-  } catch (err) {
-    console.error("Request failed:", err);
-    return false;
-  }
-}
+//     if (response.ok) {
+//       console.log("File moved successfully:", data.message);
+//       return true;
+//     } else {
+//       console.error("Error:", data.error);
+//       return false;
+//     }
+//   } catch (err) {
+//     console.error("Request failed:", err);
+//     return false;
+//   }
+// }
 
 export default function Home() {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true); 
-  const [videoSrc, setVideoSrc] = useState('test.webm');
+  const [videoSrc, setVideoSrc] = useState("test2.webm");
+  const [isLoading,setIsLoading] = useState(false);
+  const [responseData, setResponseData] = useState(null);
+  const [error, setError] = useState(null);
+  const [output, setOutput] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [outputUrl, setOutputUrl] = useState(null);
   // runway api => test.mp4 file -> replace with previous test.mp4
- let cnt = 1;
+//  let cnt = 1;
 
- // Use setInterval to run the function every 2 seconds
- const interval = setInterval(() => {
-   console.log("Test running ", cnt);
-   const success = moveFile(cnt);
-   if(!success) console.log("Fuck yrr kaam nhi kr rha!!!")
-   cnt++; // Increment the count
+//  // Use setInterval to run the function every 2 seconds
+//  const interval = setInterval(() => {
+//    console.log("Test running ", cnt);
+//    const success = moveFile(cnt);
+//    if(!success) console.log("Fuck yrr kaam nhi kr rha!!!")
+//    cnt++; // Increment the count
 
-   // Optional: Stop after a certain number of iterations (for testing purposes)
-   if (cnt > 3) {
-     // Stop after 5 iterations
-     clearInterval(interval); // Stop the interval
-     console.log("Finished moving files.");
-   }
- }, 2000);
+//    // Optional: Stop after a certain number of iterations (for testing purposes)
+//    if (cnt > 3) {
+//      // Stop after 5 iterations
+//      clearInterval(interval); // Stop the interval
+//      console.log("Finished moving files.");
+//    }
+//  }, 2000);
 
   useEffect(() => {
     const container = document.getElementById('inter');
@@ -198,13 +205,106 @@ export default function Home() {
     };
   }, []);
 
-  const FilmClick = () => {
-    Film();
+  const handleInterpolate = async () => {
+    const payload = {
+      frame1: "https://iili.io/2ajXTP9.jpg",
+      frame2: "https://iili.io/2ajXf8G.jpg",
+      times_to_interpolate: 6,
+    };
+  
+    try {
+      const response = await axios.post('http://127.0.0.1:5002/interpolate', payload);
+      // Access the output URL from the response data
+      setOutputUrl(response.data.output_url); 
+      console.log("Output URL:", response.data.output_url);
+      if (response.data.output_url) {
+        const videoUrl = response.data.output_url;
+        setVideoSrc(videoUrl); // Update the video source dynamically
+        console.log("Interpolation complete. Video updated:", videoUrl);
+      } else {
+        console.error("No video path received in response.");
+      }
+    } catch (error) {
+      console.error("Error during interpolation:", error.response?.data?.error || error.message);
+    }
   };
+  
+  
+  
 
-  const FalClick = () => {
-    FAL();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  const handleClickFAL = async () => {
+    try {
+      const response = await axios.post('http://127.0.0.1:5001/run-interpolation', {
+        frames: [
+          { url: "https://iili.io/2ajXTP9.jpg" },
+          { url: "https://iili.io/2ajXf8G.jpg" }
+        ]
+      });
+      console.log('Interpolation Result:', response.data.result.video.url);
+      setResponseData(response.data); // Store the response data in state
+      setError(null);
+      if (response.data.result.video.url) {
+        const videoUrl = response.data.result.video.url;
+        setVideoSrc(videoUrl); // Update the video source dynamically
+        console.log("Interpolation complete. Video updated:", videoUrl);
+      } else {
+        console.error("No video path received in response.");
+      }
+
+    } catch (error) {
+      console.error('Error running interpolation:', error);
+    }
   };
+  
 
   const GPUClick = () => {
     GPU();
@@ -242,7 +342,55 @@ const handleFileChange = (event) => {
     }
   }
 };
+// const handleGPUClick = async () => {
+//   try {
+//       const response = await axios.post('http://localhost:5000/GPU-Interpolate');
+//       setResponseData(response.data); // Store the response data in state
+//       setError(null); // Clear any previous errors
+      
+//   } catch (error) {
+//       console.error("Error calling the function:", error);
+//       setError("An error occurred while calling the function."); // Set error message
+//       setResponseData(null); // Clear any previous response data
+//   }
+// };
+const updateVideo = (newSrc) => {
+  setVideoSrc(newSrc); 
+  setIsLoading(true); 
+  if (videoRef.current) {
+    videoRef.current.pause(); 
+    videoRef.current.src = newSrc; 
+    videoRef.current.load(); 
+    videoRef.current.play(); 
+  }
+};
 
+const handleCanPlay = () => {
+  setIsLoading(false); 
+};
+
+const handleWaiting = () => {
+  setIsLoading(true); 
+};
+const handleClickGPU = async () => {
+  try {
+    const response = await axios.post('http://localhost:5000/GPU-Interpolate');
+    setResponseData(response.data); // Store the response data in state
+    setError(null); // Clear any previous errors
+
+    if (response.data && response.data.video_path) {
+      const videoUrl = `http://localhost:5000/download-video/${response.data.video_path}`;
+      setVideoSrc(videoUrl); // Update the video source dynamically
+      console.log("Interpolation complete. Video updated:", videoUrl);
+    } else {
+      console.error("No video path received in response.");
+    }
+  } catch (error) {
+    console.error("Error calling the function:", error);
+    setError("An error occurred while calling the function."); // Set error message
+    setResponseData(null); // Clear any previous response data
+  }
+};
 
 return (
   <>
@@ -272,20 +420,21 @@ return (
       }}
     >
       <Button style={{ padding: '5px', background: 'black', color: 'white', borderRadius: '5px'  }}
-        onClick={FilmClick}
+        onClick={handleInterpolate}
       >
         FILM(server side)
       </Button>
       <Button style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
-        onClick={FalClick}
+        onClick={handleClickFAL}
       >
         FAL(server side)
       </Button>
       <Button style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
-        onClick={GPUClick}
+        onClick={handleClickGPU}
       >
         FILM(Client Side/GPU)
       </Button>
+      
       <Button style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
         onClick={togglePlayPause}
       >
@@ -317,25 +466,51 @@ return (
         onChange={handleFileChange}
         style={{ padding: '15px', cursor: 'pointer' }}
       />
+      <Button onClick={()=>updateVideo(videoSrc)}>Update Overlay</Button>
+    <div>
+    {isLoading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 100,
+            width: '50px',
+            height: '50px',
+            border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+            borderTop: '5px solid black',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+      )}
+      
+    </div>  
+
+      
     </div>
 
     <video
-      ref={videoRef} 
-      id='inter'
-      style={{
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        pointerEvents: 'none',
-        opacity: 0.65,
-      }}
-      autoPlay
-      loop
-      muted
-    >
-      <source src="test.webm" type="video/webm" />
-      Your browser does not support the video tag.
-    </video>
+  ref={videoRef}
+  id="inter"
+  style={{
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    pointerEvents: 'none',
+    opacity: 0.65,
+  }}
+  autoPlay
+  loop
+  muted
+  onCanPlay={handleCanPlay} 
+  onWaiting={handleWaiting} 
+>
+  
+  <source src={videoSrc} type="video/webm" />
+  Your browser does not support the video tag.
+</video>
   </>
 );
 }

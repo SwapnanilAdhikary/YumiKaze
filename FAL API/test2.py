@@ -1,7 +1,7 @@
 import fal_client
 import os
 import requests
-os.environ['FAL_KEY'] = 'b29f265a-29c0-492e-a14a-4597e9c3c1ca:28aad6d7c969f4d3e15be3511b6c3032'
+os.environ['FAL_KEY'] = '5c40d660-d869-4ad4-9d54-3fa7fb41235e:0ffb788e880f642e462071fee6dd1c6e'
 
 def on_queue_update(update):
     if isinstance(update, fal_client.InProgress):
