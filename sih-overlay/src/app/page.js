@@ -19,6 +19,9 @@ import FAL from '../../utils/FAL server';
 import GPU from '../../utils/GPU';
 import { AudioWaveform, FastForward } from 'lucide-react';
 import axios from 'axios';
+import 'shepherd.js/dist/css/shepherd.css';
+import Shepherd from 'shepherd.js';
+
 
 // async function moveFile(cnt) {
 //   try {
@@ -74,136 +77,337 @@ export default function Home() {
 //    }
 //  }, 2000);
 
-  useEffect(() => {
-    const container = document.getElementById('inter');
+useEffect(() => {
+  const container = document.getElementById('inter');
 
-    const overlay = new Overlay({
-      element: container,
-      autoPan: {
-        animation: {
-          duration: 300,
-        },
+  const overlay = new Overlay({
+    element: container,
+    autoPan: {
+      animation: {
+        duration: 300,
       },
-      positioning: 'center-center',
-      stopEvent: true,
-      position: fromLonLat([78.9629, 20.5937]), // India
-    });
+    },
+    positioning: 'center-center',
+    stopEvent: true,
+    position: fromLonLat([78.9629, 20.5937]), // India
+  });
 
-    const osmLayer = new TileLayer({
-      preload: Infinity,
-      source: new OSM(),
-    });
+  const osmLayer = new TileLayer({
+    preload: Infinity,
+    source: new OSM(),
+  });
 
-    const pointerSource = new VectorSource();
-    const pointerLayer = new VectorLayer({
-      source: pointerSource,
-      style: new Style({
-        image: new Icon({
-          src: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', //  icon
-          scale: 0.1, 
-        }),
+  const pointerSource = new VectorSource();
+  const pointerLayer = new VectorLayer({
+    source: pointerSource,
+    style: new Style({
+      image: new Icon({
+        src: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', //  icon
+        scale: 0.1,
       }),
-    });
+    }),
+  });
 
-   
-    const gridSource = new VectorSource();
-    const gridLayer = new VectorLayer({
-      source: gridSource,
-      style: new Style({
-        stroke: new Stroke({
-          color: 'rgba(0, 0, 0, 0.5)', // Grid line color
-          width: 1,
-        }),
+  const gridSource = new VectorSource();
+  const gridLayer = new VectorLayer({
+    source: gridSource,
+    style: new Style({
+      stroke: new Stroke({
+        color: 'rgba(0, 0, 0, 0.5)', // Grid line color
+        width: 1,
       }),
+    }),
+  });
+
+  const createGrid = (extent) => {
+    const [minX, minY, maxX, maxY] = extent;
+    const features = [];
+    for (let x = minX; x <= maxX; x += 1000000) {
+      // Adjust spacing as needed
+      features.push(new Feature(new LineString([[x, minY], [x, maxY]])));
+    }
+    for (let y = minY; y <= maxY; y += 1000000) {
+      features.push(new Feature(new LineString([[minX, y], [maxX, y]])));
+    }
+    return features;
+  };
+
+  const extent = [
+    fromLonLat([78.9629, 20.5937])[0] - 5000000,
+    fromLonLat([78.9629, 20.5937])[1] - 5000000,
+    fromLonLat([78.9629, 20.5937])[0] + 5000000,
+    fromLonLat([78.9629, 20.5937])[1] + 5000000,
+  ];
+
+  gridSource.addFeatures(createGrid(extent));
+
+  const view = new View({
+    center: fromLonLat([78.9629, 20.5937]),
+    zoom: 2,
+    maxZoom: 8,
+    minZoom: 5,
+  });
+
+  const map = new Map({
+    target: 'map',
+    layers: [osmLayer, gridLayer, pointerLayer],
+    view: view,
+    overlays: [overlay],
+  });
+
+  const zoomSlider = new ZoomSlider();
+  map.addControl(zoomSlider);
+
+  const adjustVideoSizeAndPosition = () => {
+    const zoom = view.getZoom();
+    overlay.setPosition(fromLonLat([78.9629, 20.5937]));
+
+    const scaleFactor = Math.pow(2, zoom - 4);
+    const videoWidth = Math.max(500, 750 * scaleFactor);
+    const videoHeight = Math.max(500, 500 * scaleFactor);
+
+    Object.assign(container.style, {
+      width: `${videoWidth}px`,
+      height: `${videoHeight}px`,
+      position: 'relative',
     });
+  };
 
-    const createGrid = (extent) => {
-      const [minX, minY, maxX, maxY] = extent;
-      const features = [];
-      for (let x = minX; x <= maxX; x += 1000000) { // Adjust spacing as needed
-        features.push(new Feature(new LineString([[x, minY], [x, maxY]])));
-      }
-      for (let y = minY; y <= maxY; y += 1000000) {
-        features.push(new Feature(new LineString([[minX, y], [maxX, y]])));
-      }
-      return features;
-    };
+  view.on('change:resolution', adjustVideoSizeAndPosition);
+  adjustVideoSizeAndPosition();
 
-    const extent = [fromLonLat([78.9629, 20.5937])[0] - 5000000, 
-                        fromLonLat([78.9629, 20.5937])[1] - 5000000,
-                        fromLonLat([78.9629, 20.5937])[0] + 5000000,
-                        fromLonLat([78.9629, 20.5937])[1] + 5000000];
-    
-    gridSource.addFeatures(createGrid(extent));
+  const searchLocation = async (query) => {
+    if (!query) return;
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(
+        query
+      )}`
+    );
+    const results = await response.json();
 
-    const view = new View({
-      center: fromLonLat([78.9629, 20.5937]),
-      zoom: 2,
-      maxZoom: 8,
-      minZoom: 5,
-    });
+    if (results.length > 0) {
+      const { lat, lon } = results[0];
+      const coordinates = fromLonLat([parseFloat(lon), parseFloat(lat)]);
 
-    const map = new Map({
-      target: 'map',
-      layers: [osmLayer, gridLayer, pointerLayer],
-      view: view,
-      overlays: [overlay],
-    });
-
-    const zoomSlider = new ZoomSlider();
-    map.addControl(zoomSlider);
-
-    const adjustVideoSizeAndPosition = () => {
-      const zoom = view.getZoom();
-      overlay.setPosition(fromLonLat([78.9629, 20.5937]));
-
-      const scaleFactor = Math.pow(2, zoom - 4);
-      const videoWidth = Math.max(500, 750 * scaleFactor);
-      const videoHeight = Math.max(500, 500 * scaleFactor);
-
-      Object.assign(container.style, {
-        width: `${videoWidth}px`,
-        height: `${videoHeight}px`,
-        position: 'relative',
+      const marker = new Feature({
+        geometry: new Point(coordinates),
       });
-    };
+      pointerSource.clear();
+      pointerSource.addFeature(marker);
+    } else {
+      alert('Location not found');
+    }
+  };
 
-    view.on('change:resolution', adjustVideoSizeAndPosition);
-    adjustVideoSizeAndPosition();
+  const searchButton = document.getElementById('searchButton');
+  const searchInput = document.getElementById('searchInput');
 
-    const searchLocation = async (query) => {
-      if (!query) return;
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(query)}`
-      );
-      const results = await response.json();
+  searchButton.addEventListener('click', () => {
+    const query = searchInput.value;
+    searchLocation(query);
+  });
 
-      if (results.length > 0) {
-        const { lat, lon } = results[0];
-        const coordinates = fromLonLat([parseFloat(lon), parseFloat(lat)]);
+  // Shepherd.js Tour Integration
+  const tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shepherd-theme-arrows',
+      scrollTo: true,
+    },
+  });
 
-        const marker = new Feature({
-          geometry: new Point(coordinates),
-        });
-        pointerSource.clear();
-        pointerSource.addFeature(marker);
-      } else {
-        alert('Location not found');
-      }
-    };
+  // Add tour steps
+  tour.addStep({
+    id: 'intro',
+    text: 'Welcome to the interactive map! Let me show you around.',
+    attachTo: {
+      element: '#map',
+      on: 'center',
+    },
+    buttons: [
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  });
 
-    const searchButton = document.getElementById('searchButton');
-    const searchInput = document.getElementById('searchInput');
+  tour.addStep({
+    id: 'zoom-controls',
+    text: 'Use the zoom slider here to adjust the map zoom level.',
+    attachTo: {
+      element: '.ol-zoomslider',
+      on: 'right',
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  });
 
-    searchButton.addEventListener('click', () => {
-      const query = searchInput.value;
-      searchLocation(query);
-    });
+  tour.addStep({
+    id: 'search-location',
+    text: 'You can search for locations in India using the search bar.',
+    attachTo: {
+      element: '#searchInput',
+      on: 'bottom',
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  });
 
-    return () => {
-      map.setTarget(null); // Clean 
-    };
-  }, []);
+  tour.addStep({
+    id:'FILM Interpolation',
+    text:'You can you the Frame interpolation on the FILM server',
+    attachTo:{
+      element:'#Replicate',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  })
+
+  tour.addStep({
+    id:'FAL Interpolation',
+    text:'You can you the Frame interpolation on the FAL server, its super Fast compared to others',
+    attachTo:{
+      element:'#FAL',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  })
+
+  tour.addStep({
+    id:'GPU Interpolation',
+    text:'You can also use your very Own GPU for the interpolation purpose , make suyre your GPU have Cuda compatibility',
+    attachTo:{
+      element:'#GPU',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Complete',
+        action: tour.next,
+      },
+    ],
+  })
+  tour.addStep({
+    id:'Play/Pause',
+    text:'Play pause at your own convinience',
+    attachTo:{
+      element:'#Pause',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  })
+
+  tour.addStep({
+    id:'Speed Control',
+    text:'Control the speed of the interpolation',
+    attachTo:{
+      element:'#IamSPeed',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  })
+
+  tour.addStep({
+    id:'Custom Over to test your own overlay',
+    text:'you can also test the Overlay with your own Overlay',
+    attachTo:{
+      element:'#CustomVid',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Next',
+        action: tour.next,
+      },
+    ],
+  })
+  tour.addStep({
+    id:'Update',
+    text:'Update the overlay when Interpolation Ends',
+    attachTo:{
+      element:'#Updater',
+      on: 'bottom'
+    },
+    buttons: [
+      {
+        text: 'Back',
+        action: tour.back,
+      },
+      {
+        text: 'Complete',
+        action: tour.complete,
+      },
+    ],
+  })
+
+  // Start the tour when the map loads
+  tour.start();
+
+  return () => {
+    map.setTarget(null); // Clean up
+  };
+}, []);
 
   const handleInterpolate = async () => {
     const payload = {
@@ -228,59 +432,6 @@ export default function Home() {
       console.error("Error during interpolation:", error.response?.data?.error || error.message);
     }
   };
-  
-  
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   const handleClickFAL = async () => {
     try {
       const response = await axios.post('http://127.0.0.1:5001/run-interpolation', {
@@ -419,28 +570,29 @@ return (
         gap: '10px',
       }}
     >
-      <Button style={{ padding: '5px', background: 'black', color: 'white', borderRadius: '5px'  }}
+      <Button id="Replicate" style={{ padding: '5px', background: 'black', color: 'white', borderRadius: '5px'  }}
         onClick={handleInterpolate}
       >
         FILM(server side)
       </Button>
-      <Button style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
+      <Button id="FAL" style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
         onClick={handleClickFAL}
       >
         FAL(server side)
       </Button>
-      <Button style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
+      <Button id="GPU"  style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
         onClick={handleClickGPU}
       >
         FILM(Client Side/GPU)
       </Button>
       
-      <Button style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
+      <Button id="Pause" style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
         onClick={togglePlayPause}
       >
         {isPlaying ? 'Pause' : 'Play'}
       </Button>
       <Button
+        id="IamSPeed"
         style={{ padding: '10px', background: 'black', color: 'white', borderRadius: '5px' }}
         onClick={adjustSpeed}
       >
@@ -461,12 +613,13 @@ return (
       }}
     >
       <Input
+        id="CustomVid"
         type="file"
         accept="video/*"
         onChange={handleFileChange}
         style={{ padding: '15px', cursor: 'pointer' }}
       />
-      <Button onClick={()=>updateVideo(videoSrc)}>Update Overlay</Button>
+      <Button id="Updater" onClick={()=>updateVideo(videoSrc)}>Update Overlay</Button>
     <div>
     {isLoading && (
         <div
