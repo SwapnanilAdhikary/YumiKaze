@@ -6,6 +6,7 @@
 #map .ol-zoom {
   z-index: 100;
   position: relative;
+  display: none;
 }
 
 #map .ol-zoom .ol-zoom-in,
