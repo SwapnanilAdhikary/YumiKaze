@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Copilot</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+      .chat-container {
+        max-width: 600px;
+        margin: 50px auto;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .messages {
+        padding: 20px;
+        height: 400px;
+        overflow-y: auto;
+        border-bottom: 1px solid #ddd;
+      }
+      .input-container {
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+      }
+      .input-container input,
+      .input-container select,
+      .input-container button {
+        margin: 5px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .input-container button {
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+      .input-container button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div id="messages" class="messages"></div>
+      <div class="input-container">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="Ask about the weather..."
+        />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+    <script src="static/script.js"></script>
+  </body>
+</html>
