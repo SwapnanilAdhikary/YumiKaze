@@ -5,7 +5,7 @@ import TileLayer from 'ol/layer/Tile';
 import { Overlay, View } from 'ol';
 import OSM from 'ol/source/OSM';
 import LineString from 'ol/geom/LineString';
-import { fromLonLat } from 'ol/proj';
+import { fromLonLat, toLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import { Style, Icon, Stroke } from 'ol/style';
@@ -41,7 +41,7 @@ export default function Home() {
         },
       },
       positioning: 'center-center',
-      stopEvent: false,
+      stopEvent: false,     ///don't touch
       position: fromLonLat([78.9629, 20.5937]), // India
     });
 
@@ -86,10 +86,10 @@ export default function Home() {
     };
 
     const extent = [
-      fromLonLat([78.9629, 20.5937])[0] - 5000000,
-      fromLonLat([78.9629, 20.5937])[1] - 5000000,
-      fromLonLat([78.9629, 20.5937])[0] + 5000000,
-      fromLonLat([78.9629, 20.5937])[1] + 5000000,
+      fromLonLat([78.9629, 20.5937])[0] - 2000000,
+      fromLonLat([78.9629, 20.5937])[1] - 2000000,
+      fromLonLat([78.9629, 20.5937])[0] + 2000000,
+      fromLonLat([78.9629, 20.5937])[1] + 2000000,
     ];
 
     gridSource.addFeatures(createGrid(extent));
@@ -99,6 +99,8 @@ export default function Home() {
       zoom: 2,
       maxZoom: 8,
       minZoom: 5,
+      extent: extent,
+      
     });
 
     const map = new Map({
@@ -112,21 +114,29 @@ export default function Home() {
 
     });
     map.addControl(zoomSlider);
-
+//video height w\fixing
     const adjustVideoSizeAndPosition = () => {
       const zoom = view.getZoom();
       overlay.setPosition(fromLonLat([78.9629, 20.5937]));
 
       const scaleFactor = Math.pow(2, zoom - 4);
-      const videoWidth = Math.max(500, 750 * scaleFactor);
+      const videoWidth = Math.max(500, 750* scaleFactor);
       const videoHeight = Math.max(500, 500 * scaleFactor);
-
-      Object.assign(container.style, {
+      console.log("zoom")
+      console.log(zoom)
+      console.log("video width")
+      console.log(videoWidth)
+      console.log("height")
+      console.log(videoHeight)
+      Object.assign(container.style, {            
         width: `${videoWidth}px`,
         height: `${videoHeight}px`,
         position: 'relative',
       });
     };
+
+
+
 
     view.on('change:resolution', adjustVideoSizeAndPosition);
     adjustVideoSizeAndPosition();
@@ -469,6 +479,7 @@ export default function Home() {
 
   const handleClickGPU = async () => {
     try {
+      setIsLoading(true)
       const response = await axios.post('http://localhost:5000/GPU-Interpolate');
       setResponseData(response.data); // Store the response data in state
       setError(null); // Clear any previous errors
@@ -484,6 +495,8 @@ export default function Home() {
       console.error("Error calling the function:", error);
       setError("An error occurred while calling the function."); // Set error message
       setResponseData(null); // Clear any previous response data
+    }finally{
+      setIsLoading(false);
     }
   };
 
@@ -520,21 +533,102 @@ export default function Home() {
             <Button
               id="Replicate"
               onClick={() => {
-                handleInterpolate(setVideoSrc);
+                handleInterpolate(setVideoSrc, setOutputUrl,setIsLoading);
               }}
             >
+              <div>
+              {isLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 100,
+                    width: '50px',
+                    height: '50px',
+                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                    borderTop: '5px solid black',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              )}
+                  <style>
+    {`
+      @keyframes spin {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+    `}
+  </style>
+            </div>
               FILM(server side)
             </Button>
             <Button id="FAL"
               onClick={() => {
-                handleClickFAL(setVideoSrc);
+                handleClickFAL(setVideoSrc, setResponseData, setError,setIsLoading);
               }}
             >
+              <div>
+              {isLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 100,
+                    width: '50px',
+                    height: '50px',
+                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                    borderTop: '5px solid black',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              )}
+              <style>
+    {`
+      @keyframes spin {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+    `}
+  </style>
+            </div>
               FAL(server side)
             </Button>
             <Button id="GPU"
               onClick={handleClickGPU}
             >
+              <div>
+              {isLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 100,
+                    width: '50px',
+                    height: '50px',
+                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                    borderTop: '5px solid black',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              )}
+            </div>
               FILM(Client Side/GPU)
             </Button>
 

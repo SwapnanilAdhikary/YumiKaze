@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const handleInterpolate = async (setVideoSrc) => {
+export const handleInterpolate = async (setVideoSrc, setOutputUrl,setIsLoading) => {
   const payload = {
     frame1: "https://iili.io/2ajXTP9.jpg",
     frame2: "https://iili.io/2ajXf8G.jpg",
@@ -8,6 +8,7 @@ export const handleInterpolate = async (setVideoSrc) => {
   };
 
   try {
+    setIsLoading(true)
     const response = await axios.post('http://127.0.0.1:5002/interpolate', payload);
     // Access the output URL from the response data
     setOutputUrl(response.data.output_url);
@@ -21,11 +22,14 @@ export const handleInterpolate = async (setVideoSrc) => {
     }
   } catch (error) {
     console.error("Error during interpolation:", error.response?.data?.error || error.message);
+  }finally{
+    setIsLoading(false);
   }
 };
 
-export const handleClickFAL = async (setVideoSrc) => {
+export const handleClickFAL = async (setVideoSrc, setResponseData, setError,setIsLoading) => {
   try {
+    setIsLoading(true)
     const response = await axios.post('http://127.0.0.1:5001/run-interpolation', {
       frames: [
         { url: "https://iili.io/2ajXTP9.jpg" },
@@ -45,5 +49,7 @@ export const handleClickFAL = async (setVideoSrc) => {
 
   } catch (error) {
     console.error('Error running interpolation:', error);
+  }finally{
+    setIsLoading(false);
   }
 };
