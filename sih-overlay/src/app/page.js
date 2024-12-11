@@ -5,7 +5,7 @@ import TileLayer from 'ol/layer/Tile';
 import { Overlay, View } from 'ol';
 import OSM from 'ol/source/OSM';
 import LineString from 'ol/geom/LineString';
-import { fromLonLat } from 'ol/proj';
+import { fromLonLat, toLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import { Style, Icon, Stroke } from 'ol/style';
@@ -18,6 +18,10 @@ import axios from 'axios';
 import 'shepherd.js/dist/css/shepherd.css';
 import Shepherd from 'shepherd.js';
 import { handleClickFAL, handleInterpolate } from '../../utils/interpolationServer';
+import ImageLayer from 'ol/layer/Image';
+import ImageStaticSource from 'ol/source/ImageStatic';
+import {transformExtent} from 'ol/proj';
+import Control from 'ol/control/Control';
 
 export default function Home() {
   const videoRef = useRef(null);
@@ -41,7 +45,7 @@ export default function Home() {
         },
       },
       positioning: 'center-center',
-      stopEvent: false,
+      stopEvent: false,     ///don't touch
       position: fromLonLat([78.9629, 20.5937]), // India
     });
 
@@ -86,10 +90,10 @@ export default function Home() {
     };
 
     const extent = [
-      fromLonLat([78.9629, 20.5937])[0] - 5000000,
-      fromLonLat([78.9629, 20.5937])[1] - 5000000,
-      fromLonLat([78.9629, 20.5937])[0] + 5000000,
-      fromLonLat([78.9629, 20.5937])[1] + 5000000,
+      fromLonLat([78.9629, 20.5937])[0] - 2000000,
+      fromLonLat([78.9629, 20.5937])[1] - 1300000,
+      fromLonLat([78.9629, 20.5937])[0] + 2000000,
+      fromLonLat([78.9629, 20.5937])[1] + 1500000,
     ];
 
     gridSource.addFeatures(createGrid(extent));
@@ -99,34 +103,253 @@ export default function Home() {
       zoom: 2,
       maxZoom: 8,
       minZoom: 5,
+      extent: extent,
+      
     });
 
     const map = new Map({
       target: 'map',
       layers: [osmLayer, gridLayer, pointerLayer],
       view: view,
-      overlays: [overlay],
+      // overlays: [overlay],
     });
 
     const zoomSlider = new ZoomSlider({
 
     });
     map.addControl(zoomSlider);
-
+//video height w\fixing
     const adjustVideoSizeAndPosition = () => {
       const zoom = view.getZoom();
       overlay.setPosition(fromLonLat([78.9629, 20.5937]));
 
       const scaleFactor = Math.pow(2, zoom - 4);
-      const videoWidth = Math.max(500, 750 * scaleFactor);
+      const videoWidth = Math.max(500, 750* scaleFactor);
       const videoHeight = Math.max(500, 500 * scaleFactor);
-
-      Object.assign(container.style, {
+      console.log("zoom")
+      console.log(zoom)
+      console.log("video width")
+      console.log(videoWidth)
+      console.log("height")
+      console.log(videoHeight)
+      Object.assign(container.style, {            
         width: `${videoWidth}px`,
         height: `${videoHeight}px`,
         position: 'relative',
       });
     };
+//newly added
+
+
+
+
+function showAnimLayer(inputVideoWebm, inputVideoMp, bbox, map, playbackRate, showSeconds_, videoOpacity, legend) {
+  /****************************************************
+This function creates the folowing globals:
+video;	
+videoControl; 
+showSeconds;
+postcomposeKey; 
+animInterval;
+
+the video with function removeAnimLayer()
+*****************************************************/
+  /****************************************************
+
+*****************************************************/
+  // removeAnimLayer(map);
+  var extents = transformExtent([parseFloat(bbox[0]), parseFloat(bbox[1]), parseFloat(bbox[2]), parseFloat(bbox[3])], 'EPSG:4326', 'EPSG:3857');
+  var corners = [
+      [extents[0], extents[3]],
+      [extents[2], extents[3]],
+      [extents[2], extents[1]],
+      [extents[0], extents[1]]
+  ];
+  var baseLayer = new ImageLayer({
+      name: 'blankLayer',
+      source: new ImageStaticSource({
+          url: 'img/blanklayer.png',
+          projection: map.getView().getProjection(),
+          imageExtent: extents,
+      })
+  });
+  /**************************************
+Setting video as a global 
+
+***************************************/
+  const video = document.createElement('video');
+  video.setAttribute("id", "videoElement");
+  video.muted='muted';
+  video.crossOrigin = 'Anonymous';
+  var inputVideo = [
+      [inputVideoWebm, 'video/webm'],
+      [inputVideoMp, 'video/mp4'],
+  ];
+  for (var i = 0; i < inputVideo.length; i++) {
+      var source = document.createElement('source');
+      source.src = inputVideo[i][0];
+      source.type = inputVideo[i][1];
+      video.appendChild(source);
+  }
+  /************************************************
+          Video Controls
+   *************************************************/
+  var windowcontainer = document.createElement('div');
+  windowcontainer.setAttribute("id", "windowAnim");
+  var windowcontent = document.createElement('div');
+  windowcontent.setAttribute("id", "windowAnim-content");
+  windowcontainer.appendChild(windowcontent);
+  windowcontainer.className = "ol-animwindow";
+  windowcontainer.onclick = function() {};
+  /***********************************
+videoControl will be a global
+
+***********************************/
+  const videoControl = new Control({
+      element: windowcontainer
+  });
+  windowcontent.innerHTML = '<center><i><div id="videoLegend"></div></center><br>';
+  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastback.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime = video.duration-showSeconds;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/back.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();if(video.currentTime <= video.duration-showSeconds){video.currentTime = video.duration-showSeconds}else{video.currentTime-=1;}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;&nbsp;<img id="playPauseControlImg" src="/img/pause.png" onclick="if(document.getElementById(\'playPauseControlImg\').src.slice(document.getElementById(\'playPauseControlImg\').src.length-8,-4)==\'play\'){document.getElementById(\'playPauseControlImg\').src=\'img/pause.png\';videoPlay();}else{document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;&nbsp;';
+  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/forward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime+=1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastforward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime=showSeconds-1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+  windowcontainer.style.display = 'block';
+  map.addControl(videoControl);
+  
+  /*******************************
+Video Events
+  *******************************/
+  if (typeof(playbackRate) == 'undefined' || playbackRate == null) {
+      video.playbackRate = 1;
+  } else {
+      video.playbackRate = playbackRate;
+  }
+  video.addEventListener('ended', function() {
+      if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
+          document.getElementById('playPauseControlImg').src = 'img/pause.png';
+      }
+      this.currentTime = 0;
+      this.play();
+  }, false);
+  /***************************************
+   *	Controling the Legend in the video
+   ****************************************/
+   if(!(typeof(legend)=='undefined' || legend==null)){
+       video.addEventListener('timeupdate', function() {
+           if (typeof(video) != 'undefined') {
+               if (video.currentTime > showSeconds) {
+                   video.currentTime = 0;
+               }
+               
+               if (navigator.appName != 'Netscape') {
+                   var currentTimeUpdate = video.currentTime.toFixed(0);
+                   if (currentTimeUpdate < 3) {
+                       var currentTimeStamp = new Date(legend[0]);
+                   } else {
+                       var currentTimeStamp = new Date(legend[currentTimeUpdate - 3]);
+                   }
+                   videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
+               } else {
+                   //the last frame is repeated so the time is the same as the previous
+                   var currentTimeUpdate = video.currentTime.toFixed(0);
+                   if (typeof(legend[currentTimeUpdate]) == 'undefined') {
+                       var currentTimeStamp = new Date(legend[currentTimeUpdate - 1]);
+                   } else {
+                       var currentTimeStamp = new Date(legend[currentTimeUpdate]);
+                   }
+                   videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
+               }
+           }
+       }, false);
+   }
+  /***************************************
+   start playing and change 
+    the duration of the video the video 
+    after the video is loaded. 
+  ****************************************/
+  video.addEventListener('loadeddata', function() {
+      videoInitialPlay();
+      
+function videoInitialPlay() {
+  if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
+      document.getElementById('playPauseControlImg').src = 'img/pause.png';
+  }
+  video.currentTime = 0;
+  video.play();
+}
+      /*************************************************************************
+         global variable showSeconds,  to controll
+        the video according to the seconds 
+        If showSeconds_      ***************************************************************************/
+      if (typeof(showSeconds_) == 'undefined' || showSeconds_ == null || showSeconds_ == 'all') {
+          showSeconds = video.duration;
+      } else {
+          showSeconds = showSeconds_;
+      }
+  }, false);
+
+  var topLeft = corners[0];
+  var topRight = corners[1];
+  var bottomRight = corners[2];
+  var height = topRight[1] - bottomRight[1];
+  var width = topRight[0] - topLeft[0];
+  /***************************************
+    Video rotation 
+  ****************************************/
+  var dx = width;
+  var dy = topLeft[1] - topRight[1];
+  var rotation = Math.atan2(dy, dx);
+  /***************************************
+     add the video to OL
+    using canvas and  the postcomposeKey 
+    as a global.
+  ****************************************/
+  if (typeof(videoOpacity) == 'undefined' || videoOpacity == null) {
+      videoOpacity = 0.5;
+  }
+  const postcomposeKey = baseLayer.on('postrender', function(event) {
+      var frameState = event.frameState;
+      var resolution = frameState.viewState.resolution;
+      var origin = map.getPixelFromCoordinate(topLeft);
+      var context = event.context;
+      context.save();
+      context.scale(frameState.pixelRatio, frameState.pixelRatio);
+      context.translate(origin[0], origin[1]);
+      context.rotate(rotation);
+      context.globalAlpha = videoOpacity;
+      context.drawImage(video, 0, 0, width / resolution, height / resolution);
+      context.restore();
+
+
+      
+      function videoPause() {
+        video.pause();
+    }
+  });
+  map.addLayer(baseLayer);
+  /***************************************************************
+   setInterval() method. 
+  Map will be rendered 10 times per second.
+  **************************************************************/
+  const animInterval = setInterval(function() {
+      map.render();
+  }, 1000 / 10);
+}
+
+
+var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
+var bbox = ["48.116", "6.554", "107.395", "35.674"];
+var framerate=1;
+var showSeconds='all';
+var opacity=0.5;
+showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opacity,legend);
+
+
+
+//added new
+
+
 
     view.on('change:resolution', adjustVideoSizeAndPosition);
     adjustVideoSizeAndPosition();
@@ -469,6 +692,7 @@ export default function Home() {
 
   const handleClickGPU = async () => {
     try {
+      setIsLoading(true)
       const response = await axios.post('http://localhost:5000/GPU-Interpolate');
       setResponseData(response.data); // Store the response data in state
       setError(null); // Clear any previous errors
@@ -484,6 +708,8 @@ export default function Home() {
       console.error("Error calling the function:", error);
       setError("An error occurred while calling the function."); // Set error message
       setResponseData(null); // Clear any previous response data
+    }finally{
+      setIsLoading(false);
     }
   };
 
@@ -520,21 +746,102 @@ export default function Home() {
             <Button
               id="Replicate"
               onClick={() => {
-                handleInterpolate(setVideoSrc);
+                handleInterpolate(setVideoSrc, setOutputUrl,setIsLoading);
               }}
             >
+              <div>
+              {isLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 100,
+                    width: '50px',
+                    height: '50px',
+                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                    borderTop: '5px solid black',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              )}
+                  <style>
+    {`
+      @keyframes spin {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+    `}
+  </style>
+            </div>
               FILM(server side)
             </Button>
             <Button id="FAL"
               onClick={() => {
-                handleClickFAL(setVideoSrc);
+                handleClickFAL(setVideoSrc, setResponseData, setError,setIsLoading);
               }}
             >
+              <div>
+              {isLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 100,
+                    width: '50px',
+                    height: '50px',
+                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                    borderTop: '5px solid black',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              )}
+              <style>
+    {`
+      @keyframes spin {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+    `}
+  </style>
+            </div>
               FAL(server side)
             </Button>
             <Button id="GPU"
               onClick={handleClickGPU}
             >
+              <div>
+              {isLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 100,
+                    width: '50px',
+                    height: '50px',
+                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                    borderTop: '5px solid black',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              )}
+            </div>
               FILM(Client Side/GPU)
             </Button>
 

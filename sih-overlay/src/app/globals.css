@@ -58,6 +58,25 @@
   transform: scale(1.2);
 }
 
+
+/* added now */
+#map  .ol-animwindow {
+  display: none;
+  position: absolute;
+  opacity: 0.97;
+  background-color: white;
+  -moz-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  top: 13px;
+  left: 37%;
+  font-size: small;
+  color: grey;
+}
+
 /* Dark mode styles */
 @layer base {
   :root {
