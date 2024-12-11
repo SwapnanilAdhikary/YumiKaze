@@ -34,6 +34,8 @@ export default function Home() {
   const [videoUrl, setVideoUrl] = useState(null);
   const [outputUrl, setOutputUrl] = useState(null);
 
+  const [videoElem, setVideoElem] = useState(null);
+
   useEffect(() => {
     const container = document.getElementById('inter');
 
@@ -104,7 +106,7 @@ export default function Home() {
       maxZoom: 8,
       minZoom: 5,
       extent: extent,
-      
+
     });
 
     const map = new Map({
@@ -132,7 +134,7 @@ export default function Home() {
       console.log(videoWidth)
       console.log("height")
       console.log(videoHeight)
-      Object.assign(container.style, {            
+      Object.assign(container.style, {
         width: `${videoWidth}px`,
         height: `${videoHeight}px`,
         position: 'relative',
@@ -146,10 +148,10 @@ export default function Home() {
 function showAnimLayer(inputVideoWebm, inputVideoMp, bbox, map, playbackRate, showSeconds_, videoOpacity, legend) {
   /****************************************************
 This function creates the folowing globals:
-video;	
-videoControl; 
+video;
+videoControl;
 showSeconds;
-postcomposeKey; 
+postcomposeKey;
 animInterval;
 
 the video with function removeAnimLayer()
@@ -174,10 +176,11 @@ the video with function removeAnimLayer()
       })
   });
   /**************************************
-Setting video as a global 
+Setting video as a global
 
 ***************************************/
   const video = document.createElement('video');
+  setVideoElem(video);
   video.setAttribute("id", "videoElement");
   video.muted='muted';
   video.crossOrigin = 'Anonymous';
@@ -216,7 +219,7 @@ videoControl will be a global
   windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastforward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime=showSeconds-1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
   windowcontainer.style.display = 'block';
   map.addControl(videoControl);
-  
+
   /*******************************
 Video Events
   *******************************/
@@ -241,7 +244,7 @@ Video Events
                if (video.currentTime > showSeconds) {
                    video.currentTime = 0;
                }
-               
+
                if (navigator.appName != 'Netscape') {
                    var currentTimeUpdate = video.currentTime.toFixed(0);
                    if (currentTimeUpdate < 3) {
@@ -264,13 +267,13 @@ Video Events
        }, false);
    }
   /***************************************
-   start playing and change 
-    the duration of the video the video 
-    after the video is loaded. 
+   start playing and change
+    the duration of the video the video
+    after the video is loaded.
   ****************************************/
   video.addEventListener('loadeddata', function() {
       videoInitialPlay();
-      
+
 function videoInitialPlay() {
   if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
       document.getElementById('playPauseControlImg').src = 'img/pause.png';
@@ -280,7 +283,7 @@ function videoInitialPlay() {
 }
       /*************************************************************************
          global variable showSeconds,  to controll
-        the video according to the seconds 
+        the video according to the seconds
         If showSeconds_      ***************************************************************************/
       if (typeof(showSeconds_) == 'undefined' || showSeconds_ == null || showSeconds_ == 'all') {
           showSeconds = video.duration;
@@ -295,14 +298,14 @@ function videoInitialPlay() {
   var height = topRight[1] - bottomRight[1];
   var width = topRight[0] - topLeft[0];
   /***************************************
-    Video rotation 
+    Video rotation
   ****************************************/
   var dx = width;
   var dy = topLeft[1] - topRight[1];
   var rotation = Math.atan2(dy, dx);
   /***************************************
      add the video to OL
-    using canvas and  the postcomposeKey 
+    using canvas and  the postcomposeKey
     as a global.
   ****************************************/
   if (typeof(videoOpacity) == 'undefined' || videoOpacity == null) {
@@ -320,16 +323,10 @@ function videoInitialPlay() {
       context.globalAlpha = videoOpacity;
       context.drawImage(video, 0, 0, width / resolution, height / resolution);
       context.restore();
-
-
-      
-      function videoPause() {
-        video.pause();
-    }
   });
   map.addLayer(baseLayer);
   /***************************************************************
-   setInterval() method. 
+   setInterval() method.
   Map will be rendered 10 times per second.
   **************************************************************/
   const animInterval = setInterval(function() {
@@ -587,60 +584,12 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
     };
   }, []);
 
-  // const handleInterpolate = async () => {
-  //   const payload = {
-  //     frame1: "https://iili.io/2ajXTP9.jpg",
-  //     frame2: "https://iili.io/2ajXf8G.jpg",
-  //     times_to_interpolate: 6,
-  //   };
-
-  //   try {
-  //     const response = await axios.post('http://127.0.0.1:5002/interpolate', payload);
-  //     // Access the output URL from the response data
-  //     setOutputUrl(response.data.output_url);
-  //     console.log("Output URL:", response.data.output_url);
-  //     if (response.data.output_url) {
-  //       const videoUrl = response.data.output_url;
-  //       setVideoSrc(videoUrl); // Update the video source dynamically
-  //       console.log("Interpolation complete. Video updated:", videoUrl);
-  //     } else {
-  //       console.error("No video path received in response.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error during interpolation:", error.response?.data?.error || error.message);
-  //   }
-  // };
-
-  // const handleClickFAL = async () => {
-  //   try {
-  //     const response = await axios.post('http://127.0.0.1:5001/run-interpolation', {
-  //       frames: [
-  //         { url: "https://iili.io/2ajXTP9.jpg" },
-  //         { url: "https://iili.io/2ajXf8G.jpg" }
-  //       ]
-  //     });
-  //     console.log('Interpolation Result:', response.data.result.video.url);
-  //     setResponseData(response.data); // Store the response data in state
-  //     setError(null);
-  //     if (response.data.result.video.url) {
-  //       const videoUrl = response.data.result.video.url;
-  //       setVideoSrc(videoUrl); // Update the video source dynamically
-  //       console.log("Interpolation complete. Video updated:", videoUrl);
-  //     } else {
-  //       console.error("No video path received in response.");
-  //     }
-
-  //   } catch (error) {
-  //     console.error('Error running interpolation:', error);
-  //   }
-  // };
-
   const togglePlayPause = () => {
-    if (videoRef.current) {
+    if (videoElem) {
       if (isPlaying) {
-        videoRef.current.pause();
+        videoElem.pause();
       } else {
-        videoRef.current.play();
+        videoElem.play();
       }
       setIsPlaying(!isPlaying);
     }
@@ -649,9 +598,9 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
   const [playbackRate, setPlaybackRate] = useState(1.0);
 
   const adjustSpeed = () => {
-    if (videoRef.current) {
+    if (videoElem) {
       const newRate = playbackRate === 1.0 ? 0.5 : 1.0;
-      videoRef.current.playbackRate = newRate;
+      videoElem.playbackRate = newRate;
       setPlaybackRate(newRate);
     }
   };
@@ -855,7 +804,7 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
               id="IamSPeed"
               onClick={adjustSpeed}
             >
-              {playbackRate !== 1.0 ? 'Slow Down' : 'Normal Speed'}
+              {playbackRate === 1.0 ? 'Slow Down' : 'Normal Speed'}
             </Button>
           </div>
 
