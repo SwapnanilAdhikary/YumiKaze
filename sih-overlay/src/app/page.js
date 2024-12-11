@@ -455,6 +455,7 @@ export default function Home() {
       if (response.data && response.data.video_path) {
         const videoUrl = `http://localhost:5000/download-video/${response.data.video_path}`;
         setVideoSrc(videoUrl); // Update the video source dynamically
+        videoUpdateFunc(hoBbox, hoMap, videoUrl);
         console.log("Interpolation complete. Video updated:", videoUrl);
       } else {
         console.error("No video path received in response.");
@@ -468,11 +469,11 @@ export default function Home() {
     }
   };
 
-  function videoUpdateFunc() {
+  function videoUpdateFunc(hoBbox, hoMap, videoSrc) {
     hoMap.removeLayer(hoBaseLayer);
     var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
     console.log(hoBbox)
-    showAnimLayer('/test2.webm', '/test2.webm', hoBbox, hoMap, 1, 'all', 0.5, legend);
+    showAnimLayer(videoSrc, videoSrc, hoBbox, hoMap, 1, 'all', 0.5, legend);
   }
 
   return (
