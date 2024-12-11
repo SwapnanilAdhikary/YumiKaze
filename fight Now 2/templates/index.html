@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Chatbot</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Weather Chatbot</h1>
+      <form method="POST" action="/">
+        <input type="text" name="city" placeholder="Enter city name" required />
+        <button type="submit">Get Weather</button>
+      </form>
+
+      {% if error_message %}
+      <p class="error">{{ error_message }}</p>
+      {% endif %} {% if city %}
+      <h2>Weather Details for {{ city }}</h2>
+      <ul>
+        <li><strong>Temperature:</strong> {{ temp }}°C</li>
+        <li><strong>Min Temperature:</strong> {{ temp_min }}°C</li>
+        <li><strong>Max Temperature:</strong> {{ temp_max }}°C</li>
+        <li><strong>Pressure:</strong> {{ pressure }} hPa</li>
+        <li><strong>Humidity:</strong> {{ humidity }}%</li>
+        <li><strong>Wind Speed:</strong> {{ wind_speed }} m/s</li>
+        <li><strong>Wind Direction:</strong> {{ wind_deg }}°</li>
+        <li><strong>Cloudiness:</strong> {{ clouds_all }}%</li>
+        <li><strong>Weather:</strong> {{ weather_description }}</li>
+      </ul>
+
+      <h3>Next 3 Days Forecast:</h3>
+      <ul>
+        {% for day in forecast %}
+        <li>
+          {{ day.time }} - Temp: {{ day.temp }}°C, Humidity: {{ day.humidity
+          }}%, Weather: {{ day.description }}
+        </li>
+        {% endfor %}
+      </ul>
+
+      <h3>Air Quality Index (AQI):</h3>
+      <p>AQI: {{ aqi }}</p>
+
+      <h3>Weather Recommendations:</h3>
+      <ul>
+        {% for recommendation in weather_recommendations %}
+        <li>{{ recommendation }}</li>
+        {% endfor %}
+      </ul>
+
+      <h3>AQI Recommendations:</h3>
+      <ul>
+        {% for recommendation in aqi_recommendations %}
+        <li>{{ recommendation }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </body>
+</html>
