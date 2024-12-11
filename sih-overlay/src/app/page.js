@@ -39,6 +39,56 @@ export default function Home() {
   const [hoMap, setHoMap] = useState(null);
   const [hoBbox, setHoBbox] = useState(['73.98', '10.70', '79.96','17.80']);
 
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+
+  console.log(startTime, endTime)
+
+  // Function to round a date to the nearest 30-minute interval
+  const roundToNearest30Minutes = (date) => {
+    const minutes = date.getMinutes();
+    const remainder = minutes % 30;
+    date.setMinutes(minutes - remainder + (remainder === 0 ? 30 : 0));
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+    return date;
+  };
+
+  // Function to handle start time change
+  const handleStartTimeChange = (event) => {
+    const newStartTime = event.target.value;
+    setStartTime(newStartTime);
+
+    // Calculate end time as 30 minutes after the start time
+    const startDate = new Date(newStartTime);
+    if (!isNaN(startDate)) {
+      let endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + 30); // Add a 30-minute gap
+
+      // Round the end time to the nearest 30-minute mark
+      endDate = roundToNearest30Minutes(endDate);
+      setEndTime(endDate.toISOString().slice(0, 16)); // Format to the correct format
+    }
+  };
+
+  // Function to handle end time change
+  const handleEndTimeChange = (event) => {
+    const newEndTime = event.target.value;
+    setEndTime(newEndTime);
+
+    const startDate = new Date(startTime);
+    const endDate = new Date(newEndTime);
+
+    if (isNaN(startDate) || isNaN(endDate)) return; // If the dates are invalid, return early
+
+    const diffMinutes = (endDate - startDate) / 60000; // Difference in minutes
+
+    // Check if the difference is a multiple of 30 minutes
+    if (diffMinutes % 30 !== 0) {
+      alert('The end time must be a multiple of 30 minutes after the start time.');
+    }
+  };
+
   function showAnimLayer(inputVideoWebm, inputVideoMp, bbox, map, playbackRate, showSeconds_, videoOpacity, legend) {
     /****************************************************
   This function creates the folowing globals:
@@ -288,20 +338,6 @@ export default function Home() {
 
     });
     map.addControl(zoomSlider);
-    //video height w\fixing
-    const adjustVideoSizeAndPosition = () => {
-      const zoom = view.getZoom();
-      overlay.setPosition(fromLonLat([78.9629, 20.5937]));
-
-      const scaleFactor = Math.pow(2, zoom - 4);
-      const videoWidth = Math.max(500, 750 * scaleFactor);
-      const videoHeight = Math.max(500, 500 * scaleFactor);
-      Object.assign(container.style, {
-        width: `${videoWidth}px`,
-        height: `${videoHeight}px`,
-        position: 'relative',
-      });
-    };
     //newly added
 
     var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
@@ -315,10 +351,6 @@ export default function Home() {
 
     //added new
 
-
-
-    view.on('change:resolution', adjustVideoSizeAndPosition);
-    adjustVideoSizeAndPosition();
 
     const searchLocation = async (query) => {
       if (!query) return;
@@ -441,16 +473,6 @@ export default function Home() {
     var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
     console.log(hoBbox)
     showAnimLayer('/test2.webm', '/test2.webm', hoBbox, hoMap, 1, 'all', 0.5, legend);
-    console.log("Video update function called");
-    videoElem.pause()
-    videoElem.src = '/test4.webm'
-    console.log(videoElem)
-    console.log("Video source updated to:", videoElem.src);
-    videoElem.load()
-    videoElem.play().catch((error) => {
-      console.error('Error attempting to play the video:', error);
-    });
-
   }
 
   return (
@@ -632,12 +654,24 @@ export default function Home() {
 
           <div>
             <div>
-              <label htmlFor="date">Select Start Date and Time:</label>
-              <input type="datetime-local" name="datetime" id="" />
+              <label htmlFor="start-time">Select Start Date and Time:</label>
+              <input
+                type="datetime-local"
+                id="start-time"
+                name="start-time"
+                value={startTime}
+                onChange={handleStartTimeChange}
+              />
             </div>
             <div>
-              <label htmlFor="date">Select End Date and Time:</label>
-              <input type="datetime-local" name="datetime" id="" />
+              <label htmlFor="end-time">Select End Date and Time:</label>
+              <input
+                type="datetime-local"
+                id="end-time"
+                name="end-time"
+                value={endTime}
+                onChange={handleEndTimeChange}
+              />
             </div>
           </div>
         </div>
@@ -645,24 +679,6 @@ export default function Home() {
 
 
       {/* Overlay video */}
-      <video
-        ref={videoRef}
-        id="inter"
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          pointerEvents: 'none',
-          opacity: 0.65,
-        }}
-        autoPlay
-        loop
-        muted
-        onCanPlay={handleCanPlay}
-        onWaiting={handleWaiting}
-      >
-        <source src={videoSrc} type="video/webm" />
-      </video>
     </div>
   );
 }
