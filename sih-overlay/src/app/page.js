@@ -21,7 +21,7 @@ import { handleClickFAL, handleInterpolate } from '../../utils/interpolationServ
 import ImageLayer from 'ol/layer/Image';
 import ImageStaticSource from 'ol/source/ImageStatic';
 import { transformExtent } from 'ol/proj';
-import Control from 'ol/control/Control';
+import DragBox from 'ol/interaction/DragBox.js';
 
 export default function Home() {
   const videoRef = useRef(null);
@@ -33,7 +33,7 @@ export default function Home() {
   const [output, setOutput] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [outputUrl, setOutputUrl] = useState(null);
-
+  const [selectedExtent, setSelectedExtent] = useState(null);
   const [videoElem, setVideoElem] = useState(null);
 
   useEffect(() => {
@@ -116,6 +116,39 @@ export default function Home() {
       // overlays: [overlay],
     });
 
+    // DragBox interaction for selecting extents
+    const dragBox = new DragBox({
+      condition: (event) => true,
+    });
+
+    dragBox.on('boxend', () => {
+      const extent = dragBox.getGeometry().getExtent();
+      setSelectedExtent(extent);
+      console.log('Selected Extent:', extent);
+
+      const [minX, minY, maxX, maxY] = extent;
+      const [minLon, minLat] = fromLonLat([extent[0], extent[1]]);
+      const [maxLon, maxLat] = fromLonLat([extent[2], extent[3]]);
+      console.log('Selected Extent (LonLat):', [minLon, minLat, maxLon, maxLat]);
+
+      // Convert to latitude/longitude (EPSG:4326)
+      const minCoordinates = toLonLat([minX, minY]);
+      const maxCoordinates = toLonLat([maxX, maxY]);
+
+      // Log the coordinates
+      console.log('Bottom-left Corner (Lat/Lon):', minCoordinates);
+      console.log('Top-right Corner (Lat/Lon):', maxCoordinates);
+
+      // Zoom to the selected extent
+      map.getView().fit(extent, { duration: 1000 }); // Smooth zoom animation
+    });
+
+    dragBox.on('boxstart', () => {
+      // Optionally clear previous selections or perform other actions
+    });
+
+    map.addInteraction(dragBox);
+
     const zoomSlider = new ZoomSlider({
 
     });
@@ -197,28 +230,29 @@ export default function Home() {
       /************************************************
               Video Controls
        *************************************************/
-      var windowcontainer = document.createElement('div');
-      windowcontainer.setAttribute("id", "windowAnim");
-      var windowcontent = document.createElement('div');
-      windowcontent.setAttribute("id", "windowAnim-content");
-      windowcontainer.appendChild(windowcontent);
-      windowcontainer.className = "ol-animwindow";
-      windowcontainer.onclick = function () { };
+      // var windowcontainer = document.createElement('div');
+      // windowcontainer.setAttribute("id", "windowAnim");
+      // var windowcontent = document.createElement('div');
+      // windowcontent.setAttribute("id", "windowAnim-content");
+      // windowcontent.style.display = 'none';
+      // windowcontainer.appendChild(windowcontent);
+      // windowcontainer.className = "ol-animwindow none";
+      // windowcontainer.onclick = function () { };
       /***********************************
     videoControl will be a global
 
     ***********************************/
-      const videoControl = new Control({
-        element: windowcontainer
-      });
-      windowcontent.innerHTML = '<center><i><div id="videoLegend"></div></center><br>';
-      windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastback.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime = video.duration-showSeconds;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-      windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/back.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();if(video.currentTime <= video.duration-showSeconds){video.currentTime = video.duration-showSeconds}else{video.currentTime-=1;}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-      windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;&nbsp;<img id="playPauseControlImg" src="/img/pause.png" onclick="if(document.getElementById(\'playPauseControlImg\').src.slice(document.getElementById(\'playPauseControlImg\').src.length-8,-4)==\'play\'){document.getElementById(\'playPauseControlImg\').src=\'img/pause.png\';videoPlay();}else{document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;&nbsp;';
-      windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/forward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime+=1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-      windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastforward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime=showSeconds-1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-      windowcontainer.style.display = 'block';
-      map.addControl(videoControl);
+      // const videoControl = new Control({
+      //   element: windowcontainer
+      // });
+      // windowcontent.innerHTML = '<center><i><div id="videoLegend"></div></center><br>';
+      // windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastback.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime = video.duration-showSeconds;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+      // windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/back.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();if(video.currentTime <= video.duration-showSeconds){video.currentTime = video.duration-showSeconds}else{video.currentTime-=1;}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+      // windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;&nbsp;<img id="playPauseControlImg" src="/img/pause.png" onclick="if(document.getElementById(\'playPauseControlImg\').src.slice(document.getElementById(\'playPauseControlImg\').src.length-8,-4)==\'play\'){document.getElementById(\'playPauseControlImg\').src=\'img/pause.png\';videoPlay();}else{document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;&nbsp;';
+      // windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/forward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime+=1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+      // windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastforward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime=showSeconds-1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
+      // windowcontainer.style.display = 'none';
+      // map.addControl(videoControl);
 
       /*******************************
     Video Events
@@ -229,43 +263,43 @@ export default function Home() {
         video.playbackRate = playbackRate;
       }
       video.addEventListener('ended', function () {
-        if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
-          document.getElementById('playPauseControlImg').src = 'img/pause.png';
-        }
+        // if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
+        //   document.getElementById('playPauseControlImg').src = 'img/pause.png';
+        // }
         this.currentTime = 0;
         this.play();
       }, false);
       /***************************************
        *	Controling the Legend in the video
        ****************************************/
-      if (!(typeof (legend) == 'undefined' || legend == null)) {
-        video.addEventListener('timeupdate', function () {
-          if (typeof (video) != 'undefined') {
-            if (video.currentTime > showSeconds) {
-              video.currentTime = 0;
-            }
+      // if (!(typeof (legend) == 'undefined' || legend == null)) {
+      //   video.addEventListener('timeupdate', function () {
+      //     if (typeof (video) != 'undefined') {
+      //       if (video.currentTime > showSeconds) {
+      //         video.currentTime = 0;
+      //       }
 
-            if (navigator.appName != 'Netscape') {
-              var currentTimeUpdate = video.currentTime.toFixed(0);
-              if (currentTimeUpdate < 3) {
-                var currentTimeStamp = new Date(legend[0]);
-              } else {
-                var currentTimeStamp = new Date(legend[currentTimeUpdate - 3]);
-              }
-              videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
-            } else {
-              //the last frame is repeated so the time is the same as the previous
-              var currentTimeUpdate = video.currentTime.toFixed(0);
-              if (typeof (legend[currentTimeUpdate]) == 'undefined') {
-                var currentTimeStamp = new Date(legend[currentTimeUpdate - 1]);
-              } else {
-                var currentTimeStamp = new Date(legend[currentTimeUpdate]);
-              }
-              videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
-            }
-          }
-        }, false);
-      }
+      //       if (navigator.appName != 'Netscape') {
+      //         var currentTimeUpdate = video.currentTime.toFixed(0);
+      //         if (currentTimeUpdate < 3) {
+      //           var currentTimeStamp = new Date(legend[0]);
+      //         } else {
+      //           var currentTimeStamp = new Date(legend[currentTimeUpdate - 3]);
+      //         }
+      //         videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
+      //       } else {
+      //         //the last frame is repeated so the time is the same as the previous
+      //         var currentTimeUpdate = video.currentTime.toFixed(0);
+      //         if (typeof (legend[currentTimeUpdate]) == 'undefined') {
+      //           var currentTimeStamp = new Date(legend[currentTimeUpdate - 1]);
+      //         } else {
+      //           var currentTimeStamp = new Date(legend[currentTimeUpdate]);
+      //         }
+      //         videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
+      //       }
+      //     }
+      //   }, false);
+      // }
       /***************************************
        start playing and change
         the duration of the video the video
@@ -275,9 +309,9 @@ export default function Home() {
         videoInitialPlay();
 
         function videoInitialPlay() {
-          if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
-            document.getElementById('playPauseControlImg').src = 'img/pause.png';
-          }
+          // if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
+          //   document.getElementById('playPauseControlImg').src = 'img/pause.png';
+          // }
           video.currentTime = 0;
           video.play();
         }
@@ -382,202 +416,6 @@ export default function Home() {
       searchLocation(query);
     });
 
-    // Shepherd.js Tour Integration
-    const tour = new Shepherd.Tour({
-      useModalOverlay: true,
-      defaultStepOptions: {
-        classes: 'shepherd-theme-arrows',
-        // scrollTo: true,
-      },
-    });
-
-    // Add tour steps
-    tour.addStep({
-      id: 'intro',
-      text: 'Welcome to the interactive map! Let me show you around.',
-      attachTo: {
-        element: '#map',
-        on: 'center',
-      },
-      buttons: [
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: 'zoom-controls',
-      text: 'Use the zoom slider here to adjust the map zoom level.',
-      attachTo: {
-        element: '.ol-zoomslider',
-        on: 'right',
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: 'search-location',
-      text: 'You can search for locations in India using the search bar.',
-      attachTo: {
-        element: '#searchInput',
-        on: 'bottom',
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: 'FILM Interpolation',
-      text: 'You can you the Frame interpolation on the FILM server',
-      attachTo: {
-        element: '#Replicate',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'FAL Interpolation',
-      text: 'You can you the Frame interpolation on the FAL server, its super Fast compared to others',
-      attachTo: {
-        element: '#FAL',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'GPU Interpolation',
-      text: 'You can also use your very Own GPU for the interpolation purpose , make suyre your GPU have Cuda compatibility',
-      attachTo: {
-        element: '#GPU',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Complete',
-          action: tour.next,
-        },
-      ],
-    })
-    tour.addStep({
-      id: 'Play/Pause',
-      text: 'Play pause at your own convinience',
-      attachTo: {
-        element: '#Pause',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'Speed Control',
-      text: 'Control the speed of the interpolation',
-      attachTo: {
-        element: '#IamSPeed',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'Custom Over to test your own overlay',
-      text: 'you can also test the Overlay with your own Overlay',
-      attachTo: {
-        element: '#CustomVid',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-    tour.addStep({
-      id: 'Update',
-      text: 'Update the overlay when Interpolation Ends',
-      attachTo: {
-        element: '#Updater',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Complete',
-          action: tour.complete,
-        },
-      ],
-    })
-
-    // Start the tour when the map loads
-    // tour.start();
 
     return () => {
       map.setTarget(null); // Clean up
