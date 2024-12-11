@@ -9,6 +9,11 @@
   display: none;
 }
 
+.none {
+  display: none;
+}
+
+
 #map .ol-zoom .ol-zoom-in,
 #map .ol-zoom .ol-zoom-out {
   background: linear-gradient(90deg, #4caf50, #2e8b57);

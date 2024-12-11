@@ -16,12 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import axios from 'axios';
 import 'shepherd.js/dist/css/shepherd.css';
-import Shepherd from 'shepherd.js';
 import { handleClickFAL, handleInterpolate } from '../../utils/interpolationServer';
 import ImageLayer from 'ol/layer/Image';
 import ImageStaticSource from 'ol/source/ImageStatic';
-import {transformExtent} from 'ol/proj';
-import Control from 'ol/control/Control';
+import { transformExtent } from 'ol/proj';
+import DragBox from 'ol/interaction/DragBox.js';
 
 export default function Home() {
   const videoRef = useRef(null);
@@ -33,8 +32,142 @@ export default function Home() {
   const [output, setOutput] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [outputUrl, setOutputUrl] = useState(null);
-
+  const [selectedExtent, setSelectedExtent] = useState(null);
   const [videoElem, setVideoElem] = useState(null);
+
+  const [hoBaseLayer, setHoBaseLayer] = useState(null);
+  const [hoMap, setHoMap] = useState(null);
+  const [hoBbox, setHoBbox] = useState(['73.98', '10.70', '79.96','17.80']);
+
+  function showAnimLayer(inputVideoWebm, inputVideoMp, bbox, map, playbackRate, showSeconds_, videoOpacity, legend) {
+    /****************************************************
+  This function creates the folowing globals:
+  video;
+  videoControl;
+  showSeconds;
+  postcomposeKey;
+  animInterval;
+
+  the video with function removeAnimLayer()
+  *****************************************************/
+    /****************************************************
+
+  *****************************************************/
+    // removeAnimLayer(map);
+    console.log("original:- ",bbox)
+    var extents = transformExtent([parseFloat(bbox[0]), parseFloat(bbox[1]), parseFloat(bbox[2]), parseFloat(bbox[3])], 'EPSG:4326', 'EPSG:3857');
+    var corners = [
+      [extents[0], extents[3]],
+      [extents[2], extents[3]],
+      [extents[2], extents[1]],
+      [extents[0], extents[1]]
+    ];
+    var baseLayer = new ImageLayer({
+      name: 'blankLayer',
+      source: new ImageStaticSource({
+        url: 'img/blanklayer.png',
+        projection: map.getView().getProjection(),
+        imageExtent: extents,
+      })
+    });
+    /**************************************
+  Setting video as a global
+
+  ***************************************/
+    const video = document.createElement('video');
+    setVideoElem(video);
+    video.setAttribute("id", "videoElement");
+    video.muted = 'muted';
+    video.crossOrigin = 'Anonymous';
+    var inputVideo = [
+      [inputVideoWebm, 'video/webm'],
+      [inputVideoMp, 'video/mp4'],
+    ];
+    for (var i = 0; i < inputVideo.length; i++) {
+      var source = document.createElement('source');
+      source.src = inputVideo[i][0];
+      source.type = inputVideo[i][1];
+      video.appendChild(source);
+    }
+    /*******************************
+  Video Events
+    *******************************/
+    if (typeof (playbackRate) == 'undefined' || playbackRate == null) {
+      video.playbackRate = 1;
+    } else {
+      video.playbackRate = playbackRate;
+    }
+    video.addEventListener('ended', function () {
+      this.currentTime = 0;
+      this.play();
+    }, false);
+
+    /***************************************
+     start playing and change
+      the duration of the video the video
+      after the video is loaded.
+    ****************************************/
+    video.addEventListener('loadeddata', function () {
+      videoInitialPlay();
+
+      function videoInitialPlay() {
+        video.currentTime = 0;
+        video.play();
+      }
+      /*************************************************************************
+         global variable showSeconds,  to controll
+        the video according to the seconds
+        If showSeconds_      ***************************************************************************/
+      // if (typeof (showSeconds_) == 'undefined' || showSeconds_ == null || showSeconds_ == 'all') {
+      //   showSeconds = video.duration;
+      // } else {
+      //   showSeconds = showSeconds_;
+      // }
+    }, false);
+
+    var topLeft = corners[0];
+    var topRight = corners[1];
+    var bottomRight = corners[2];
+    var height = topRight[1] - bottomRight[1];
+    var width = topRight[0] - topLeft[0];
+    /***************************************
+      Video rotation
+    ****************************************/
+    var dx = width;
+    var dy = topLeft[1] - topRight[1];
+    var rotation = Math.atan2(dy, dx);
+    /***************************************
+       add the video to OL
+      using canvas and  the postcomposeKey
+      as a global.
+    ****************************************/
+    if (typeof (videoOpacity) == 'undefined' || videoOpacity == null) {
+      videoOpacity = 0.5;
+    }
+    const postcomposeKey = baseLayer.on('postrender', function (event) {
+      var frameState = event.frameState;
+      var resolution = frameState.viewState.resolution;
+      var origin = map.getPixelFromCoordinate(topLeft);
+      var context = event.context;
+      context.save();
+      context.scale(frameState.pixelRatio, frameState.pixelRatio);
+      context.translate(origin[0], origin[1]);
+      context.rotate(rotation);
+      context.globalAlpha = videoOpacity;
+      context.drawImage(video, 0, 0, width / resolution, height / resolution);
+      context.restore();
+    });
+    map.addLayer(baseLayer);
+    /***************************************************************
+     setInterval() method.
+    Map will be rendered 10 times per second.
+    **************************************************************/
+    const animInterval = setInterval(function () {
+      map.render();
+    }, 1000 / 10);
+
+    setHoBaseLayer(baseLayer);
+  }
 
   useEffect(() => {
     const container = document.getElementById('inter');
@@ -116,235 +249,71 @@ export default function Home() {
       // overlays: [overlay],
     });
 
+    // DragBox interaction for selecting extents
+    const dragBox = new DragBox({
+      condition: (event) => true,
+    });
+
+    dragBox.on('boxend', () => {
+      const extent = dragBox.getGeometry().getExtent();
+      setSelectedExtent(extent);
+      console.log('Selected Extent:', extent);
+
+      const [minX, minY, maxX, maxY] = extent;
+      const [minLon, minLat] = fromLonLat([extent[0], extent[1]]);
+      const [maxLon, maxLat] = fromLonLat([extent[2], extent[3]]);
+      console.log('Selected Extent (LonLat):', [minLon, minLat, maxLon, maxLat]);
+
+      // Convert to latitude/longitude (EPSG:4326)
+      const minCoordinates = toLonLat([minX, minY]);
+      const maxCoordinates = toLonLat([maxX, maxY]);
+
+      setHoBbox([`${minCoordinates[1]}`, `${minCoordinates[0]}`, `${maxCoordinates[1]}`, `${maxCoordinates[0]}`])
+
+      // Log the coordinates
+      console.log('Bottom-left Corner (Lat/Lon):', minCoordinates);
+      console.log('Top-right Corner (Lat/Lon):', maxCoordinates);
+
+      // Zoom to the selected extent
+      map.getView().fit(extent, { duration: 1000 }); // Smooth zoom animation
+    });
+
+    dragBox.on('boxstart', () => {
+      // Optionally clear previous selections or perform other actions
+    });
+
+    map.addInteraction(dragBox);
+
     const zoomSlider = new ZoomSlider({
 
     });
     map.addControl(zoomSlider);
-//video height w\fixing
+    //video height w\fixing
     const adjustVideoSizeAndPosition = () => {
       const zoom = view.getZoom();
       overlay.setPosition(fromLonLat([78.9629, 20.5937]));
 
       const scaleFactor = Math.pow(2, zoom - 4);
-      const videoWidth = Math.max(500, 750* scaleFactor);
+      const videoWidth = Math.max(500, 750 * scaleFactor);
       const videoHeight = Math.max(500, 500 * scaleFactor);
-      console.log("zoom")
-      console.log(zoom)
-      console.log("video width")
-      console.log(videoWidth)
-      console.log("height")
-      console.log(videoHeight)
       Object.assign(container.style, {
         width: `${videoWidth}px`,
         height: `${videoHeight}px`,
         position: 'relative',
       });
     };
-//newly added
+    //newly added
+
+    var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
+    var bbox = ["48.116", "6.554", "107.395", "35.674"];
+    var framerate = 1;
+    var showSeconds = 'all';
+    var opacity = 0.5;
+    showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opacity, legend);
 
 
 
-
-function showAnimLayer(inputVideoWebm, inputVideoMp, bbox, map, playbackRate, showSeconds_, videoOpacity, legend) {
-  /****************************************************
-This function creates the folowing globals:
-video;
-videoControl;
-showSeconds;
-postcomposeKey;
-animInterval;
-
-the video with function removeAnimLayer()
-*****************************************************/
-  /****************************************************
-
-*****************************************************/
-  // removeAnimLayer(map);
-  var extents = transformExtent([parseFloat(bbox[0]), parseFloat(bbox[1]), parseFloat(bbox[2]), parseFloat(bbox[3])], 'EPSG:4326', 'EPSG:3857');
-  var corners = [
-      [extents[0], extents[3]],
-      [extents[2], extents[3]],
-      [extents[2], extents[1]],
-      [extents[0], extents[1]]
-  ];
-  var baseLayer = new ImageLayer({
-      name: 'blankLayer',
-      source: new ImageStaticSource({
-          url: 'img/blanklayer.png',
-          projection: map.getView().getProjection(),
-          imageExtent: extents,
-      })
-  });
-  /**************************************
-Setting video as a global
-
-***************************************/
-  const video = document.createElement('video');
-  setVideoElem(video);
-  video.setAttribute("id", "videoElement");
-  video.muted='muted';
-  video.crossOrigin = 'Anonymous';
-  var inputVideo = [
-      [inputVideoWebm, 'video/webm'],
-      [inputVideoMp, 'video/mp4'],
-  ];
-  for (var i = 0; i < inputVideo.length; i++) {
-      var source = document.createElement('source');
-      source.src = inputVideo[i][0];
-      source.type = inputVideo[i][1];
-      video.appendChild(source);
-  }
-  /************************************************
-          Video Controls
-   *************************************************/
-  var windowcontainer = document.createElement('div');
-  windowcontainer.setAttribute("id", "windowAnim");
-  var windowcontent = document.createElement('div');
-  windowcontent.setAttribute("id", "windowAnim-content");
-  windowcontainer.appendChild(windowcontent);
-  windowcontainer.className = "ol-animwindow";
-  windowcontainer.onclick = function() {};
-  /***********************************
-videoControl will be a global
-
-***********************************/
-  const videoControl = new Control({
-      element: windowcontainer
-  });
-  windowcontent.innerHTML = '<center><i><div id="videoLegend"></div></center><br>';
-  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastback.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime = video.duration-showSeconds;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/back.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();if(video.currentTime <= video.duration-showSeconds){video.currentTime = video.duration-showSeconds}else{video.currentTime-=1;}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;&nbsp;<img id="playPauseControlImg" src="/img/pause.png" onclick="if(document.getElementById(\'playPauseControlImg\').src.slice(document.getElementById(\'playPauseControlImg\').src.length-8,-4)==\'play\'){document.getElementById(\'playPauseControlImg\').src=\'img/pause.png\';videoPlay();}else{document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();}" style="height:20px;"/>&nbsp;&nbsp;&nbsp;&nbsp;';
-  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/forward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime+=1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-  windowcontent.innerHTML += '&nbsp;&nbsp;&nbsp;<img src="/img/fastforward.png" onclick="document.getElementById(\'playPauseControlImg\').src=\'img/play.png\';videoPause();video.currentTime=showSeconds-1;" style="height:20px;"/>&nbsp;&nbsp;&nbsp;';
-  windowcontainer.style.display = 'block';
-  map.addControl(videoControl);
-
-  /*******************************
-Video Events
-  *******************************/
-  if (typeof(playbackRate) == 'undefined' || playbackRate == null) {
-      video.playbackRate = 1;
-  } else {
-      video.playbackRate = playbackRate;
-  }
-  video.addEventListener('ended', function() {
-      if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
-          document.getElementById('playPauseControlImg').src = 'img/pause.png';
-      }
-      this.currentTime = 0;
-      this.play();
-  }, false);
-  /***************************************
-   *	Controling the Legend in the video
-   ****************************************/
-   if(!(typeof(legend)=='undefined' || legend==null)){
-       video.addEventListener('timeupdate', function() {
-           if (typeof(video) != 'undefined') {
-               if (video.currentTime > showSeconds) {
-                   video.currentTime = 0;
-               }
-
-               if (navigator.appName != 'Netscape') {
-                   var currentTimeUpdate = video.currentTime.toFixed(0);
-                   if (currentTimeUpdate < 3) {
-                       var currentTimeStamp = new Date(legend[0]);
-                   } else {
-                       var currentTimeStamp = new Date(legend[currentTimeUpdate - 3]);
-                   }
-                   videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
-               } else {
-                   //the last frame is repeated so the time is the same as the previous
-                   var currentTimeUpdate = video.currentTime.toFixed(0);
-                   if (typeof(legend[currentTimeUpdate]) == 'undefined') {
-                       var currentTimeStamp = new Date(legend[currentTimeUpdate - 1]);
-                   } else {
-                       var currentTimeStamp = new Date(legend[currentTimeUpdate]);
-                   }
-                   videoLegend.innerHTML = currentTimeStamp.toGMTString().substring(0, currentTimeStamp.toGMTString().length - 7) + " UTC";
-               }
-           }
-       }, false);
-   }
-  /***************************************
-   start playing and change
-    the duration of the video the video
-    after the video is loaded.
-  ****************************************/
-  video.addEventListener('loadeddata', function() {
-      videoInitialPlay();
-
-function videoInitialPlay() {
-  if (document.getElementById('playPauseControlImg').src.slice(document.getElementById('playPauseControlImg').src.length - 8, -4) == 'play') {
-      document.getElementById('playPauseControlImg').src = 'img/pause.png';
-  }
-  video.currentTime = 0;
-  video.play();
-}
-      /*************************************************************************
-         global variable showSeconds,  to controll
-        the video according to the seconds
-        If showSeconds_      ***************************************************************************/
-      if (typeof(showSeconds_) == 'undefined' || showSeconds_ == null || showSeconds_ == 'all') {
-          showSeconds = video.duration;
-      } else {
-          showSeconds = showSeconds_;
-      }
-  }, false);
-
-  var topLeft = corners[0];
-  var topRight = corners[1];
-  var bottomRight = corners[2];
-  var height = topRight[1] - bottomRight[1];
-  var width = topRight[0] - topLeft[0];
-  /***************************************
-    Video rotation
-  ****************************************/
-  var dx = width;
-  var dy = topLeft[1] - topRight[1];
-  var rotation = Math.atan2(dy, dx);
-  /***************************************
-     add the video to OL
-    using canvas and  the postcomposeKey
-    as a global.
-  ****************************************/
-  if (typeof(videoOpacity) == 'undefined' || videoOpacity == null) {
-      videoOpacity = 0.5;
-  }
-  const postcomposeKey = baseLayer.on('postrender', function(event) {
-      var frameState = event.frameState;
-      var resolution = frameState.viewState.resolution;
-      var origin = map.getPixelFromCoordinate(topLeft);
-      var context = event.context;
-      context.save();
-      context.scale(frameState.pixelRatio, frameState.pixelRatio);
-      context.translate(origin[0], origin[1]);
-      context.rotate(rotation);
-      context.globalAlpha = videoOpacity;
-      context.drawImage(video, 0, 0, width / resolution, height / resolution);
-      context.restore();
-  });
-  map.addLayer(baseLayer);
-  /***************************************************************
-   setInterval() method.
-  Map will be rendered 10 times per second.
-  **************************************************************/
-  const animInterval = setInterval(function() {
-      map.render();
-  }, 1000 / 10);
-}
-
-
-var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
-var bbox = ["48.116", "6.554", "107.395", "35.674"];
-var framerate=1;
-var showSeconds='all';
-var opacity=0.5;
-showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opacity,legend);
-
-
-
-//added new
+    //added new
 
 
 
@@ -382,202 +351,7 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
       searchLocation(query);
     });
 
-    // Shepherd.js Tour Integration
-    const tour = new Shepherd.Tour({
-      useModalOverlay: true,
-      defaultStepOptions: {
-        classes: 'shepherd-theme-arrows',
-        // scrollTo: true,
-      },
-    });
-
-    // Add tour steps
-    tour.addStep({
-      id: 'intro',
-      text: 'Welcome to the interactive map! Let me show you around.',
-      attachTo: {
-        element: '#map',
-        on: 'center',
-      },
-      buttons: [
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: 'zoom-controls',
-      text: 'Use the zoom slider here to adjust the map zoom level.',
-      attachTo: {
-        element: '.ol-zoomslider',
-        on: 'right',
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: 'search-location',
-      text: 'You can search for locations in India using the search bar.',
-      attachTo: {
-        element: '#searchInput',
-        on: 'bottom',
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: 'FILM Interpolation',
-      text: 'You can you the Frame interpolation on the FILM server',
-      attachTo: {
-        element: '#Replicate',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'FAL Interpolation',
-      text: 'You can you the Frame interpolation on the FAL server, its super Fast compared to others',
-      attachTo: {
-        element: '#FAL',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'GPU Interpolation',
-      text: 'You can also use your very Own GPU for the interpolation purpose , make suyre your GPU have Cuda compatibility',
-      attachTo: {
-        element: '#GPU',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Complete',
-          action: tour.next,
-        },
-      ],
-    })
-    tour.addStep({
-      id: 'Play/Pause',
-      text: 'Play pause at your own convinience',
-      attachTo: {
-        element: '#Pause',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'Speed Control',
-      text: 'Control the speed of the interpolation',
-      attachTo: {
-        element: '#IamSPeed',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-
-    tour.addStep({
-      id: 'Custom Over to test your own overlay',
-      text: 'you can also test the Overlay with your own Overlay',
-      attachTo: {
-        element: '#CustomVid',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Next',
-          action: tour.next,
-        },
-      ],
-    })
-    tour.addStep({
-      id: 'Update',
-      text: 'Update the overlay when Interpolation Ends',
-      attachTo: {
-        element: '#Updater',
-        on: 'bottom'
-      },
-      buttons: [
-        {
-          text: 'Back',
-          action: tour.back,
-        },
-        {
-          text: 'Complete',
-          action: tour.complete,
-        },
-      ],
-    })
-
-    // Start the tour when the map loads
-    // tour.start();
+    setHoMap(map);
 
     return () => {
       map.setTarget(null); // Clean up
@@ -657,10 +431,27 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
       console.error("Error calling the function:", error);
       setError("An error occurred while calling the function."); // Set error message
       setResponseData(null); // Clear any previous response data
-    }finally{
+    } finally {
       setIsLoading(false);
     }
   };
+
+  function videoUpdateFunc() {
+    hoMap.removeLayer(hoBaseLayer);
+    var legend = ["2017-07-22T00:00:00Z", "2017-07-22T01:00:00Z", "2017-07-22T02:00:00Z", "2017-07-22T03:00:00Z", "2017-07-22T04:00:00Z", "2017-07-22T05:00:00Z", "2017-07-22T06:00:00Z", "2017-07-22T07:00:00Z", "2017-07-22T08:00:00Z", "2017-07-22T09:00:00Z", "2017-07-22T10:00:00Z", "2017-07-22T11:00:00Z", "2017-07-22T12:00:00Z", "2017-07-22T13:00:00Z", "2017-07-22T14:00:00Z", "2017-07-22T15:00:00Z", "2017-07-22T16:00:00Z", "2017-07-22T17:00:00Z", "2017-07-22T18:00:00Z", "2017-07-22T19:00:00Z", "2017-07-22T20:00:00Z", "2017-07-22T21:00:00Z", "2017-07-22T22:00:00Z", "2017-07-22T23:00:00Z", "2017-07-23T00:00:00Z", "2017-07-23T01:00:00Z", "2017-07-23T02:00:00Z", "2017-07-23T03:00:00Z", "2017-07-23T04:00:00Z", "2017-07-23T05:00:00Z", "2017-07-23T06:00:00Z", "2017-07-23T07:00:00Z", "2017-07-23T08:00:00Z", "2017-07-23T09:00:00Z", "2017-07-23T10:00:00Z", "2017-07-23T11:00:00Z", "2017-07-23T12:00:00Z", "2017-07-23T13:00:00Z", "2017-07-23T14:00:00Z", "2017-07-23T15:00:00Z", "2017-07-23T16:00:00Z", "2017-07-23T17:00:00Z", "2017-07-23T18:00:00Z", "2017-07-23T19:00:00Z", "2017-07-23T20:00:00Z", "2017-07-23T21:00:00Z", "2017-07-23T22:00:00Z", "2017-07-23T23:00:00Z"];
+    console.log(hoBbox)
+    showAnimLayer('/test2.webm', '/test2.webm', hoBbox, hoMap, 1, 'all', 0.5, legend);
+    console.log("Video update function called");
+    videoElem.pause()
+    videoElem.src = '/test4.webm'
+    console.log(videoElem)
+    console.log("Video source updated to:", videoElem.src);
+    videoElem.load()
+    videoElem.play().catch((error) => {
+      console.error('Error attempting to play the video:', error);
+    });
+
+  }
 
   return (
     <div className="bg-blue-100 h-[100vh]">
@@ -695,29 +486,29 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
             <Button
               id="Replicate"
               onClick={() => {
-                handleInterpolate(setVideoSrc, setOutputUrl,setIsLoading);
+                handleInterpolate(setVideoSrc, setOutputUrl, setIsLoading);
               }}
             >
               <div>
-              {isLoading && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 100,
-                    width: '50px',
-                    height: '50px',
-                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
-                    borderTop: '5px solid black',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                  }}
-                />
-              )}
-                  <style>
-    {`
+                {isLoading && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 100,
+                      width: '50px',
+                      height: '50px',
+                      border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                      borderTop: '5px solid black',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  />
+                )}
+                <style>
+                  {`
       @keyframes spin {
         0% {
           transform: translate(-50%, -50%) rotate(0deg);
@@ -727,35 +518,35 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
         }
       }
     `}
-  </style>
-            </div>
+                </style>
+              </div>
               FILM(server side)
             </Button>
             <Button id="FAL"
               onClick={() => {
-                handleClickFAL(setVideoSrc, setResponseData, setError,setIsLoading);
+                handleClickFAL(setVideoSrc, setResponseData, setError, setIsLoading);
               }}
             >
               <div>
-              {isLoading && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 100,
-                    width: '50px',
-                    height: '50px',
-                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
-                    borderTop: '5px solid black',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                  }}
-                />
-              )}
-              <style>
-    {`
+                {isLoading && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 100,
+                      width: '50px',
+                      height: '50px',
+                      border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                      borderTop: '5px solid black',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  />
+                )}
+                <style>
+                  {`
       @keyframes spin {
         0% {
           transform: translate(-50%, -50%) rotate(0deg);
@@ -765,32 +556,32 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
         }
       }
     `}
-  </style>
-            </div>
+                </style>
+              </div>
               FAL(server side)
             </Button>
             <Button id="GPU"
-              onClick={handleClickGPU}
+              onClick={videoUpdateFunc}
             >
               <div>
-              {isLoading && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 100,
-                    width: '50px',
-                    height: '50px',
-                    border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
-                    borderTop: '5px solid black',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                  }}
-                />
-              )}
-            </div>
+                {isLoading && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 100,
+                      width: '50px',
+                      height: '50px',
+                      border: '5px solid rgba(0.1, 0.1, 0.1, 0.1)',
+                      borderTop: '5px solid black',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  />
+                )}
+              </div>
               FILM(Client Side/GPU)
             </Button>
 
@@ -836,6 +627,17 @@ showAnimLayer('/test.mp4', '/test.webm', bbox, map, framerate, showSeconds, opac
                   }}
                 />
               )}
+            </div>
+          </div>
+
+          <div>
+            <div>
+              <label htmlFor="date">Select Start Date and Time:</label>
+              <input type="datetime-local" name="datetime" id="" />
+            </div>
+            <div>
+              <label htmlFor="date">Select End Date and Time:</label>
+              <input type="datetime-local" name="datetime" id="" />
             </div>
           </div>
         </div>
