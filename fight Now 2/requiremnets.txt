@@ -1,0 +1,70 @@
+import os
+import requests
+from flask import Flask, render_template, request, jsonify
+from transformers import pipeline
+
+app = Flask(__name__)
+
+# OpenWeather API credentials
+OPENWEATHER_API_KEY = 'your_openweather_api_key'
+
+# Load the Hugging Face model pipeline for text generation
+weather_model = pipeline("text2text-generation", model="google/flan-t5-base")
+
+def get_weather_data(city):
+    """Fetch weather data from OpenWeather API"""
+    url = f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric'
+    response = requests.get(url)
+    return response.json()
+
+def generate_weather_report(weather_data):
+    """Generate a detailed weather report using the Hugging Face model"""
+    # Extract details from the OpenWeather API response
+    city = weather_data['name']
+    temperature = weather_data['main']['temp']
+    humidity = weather_data['main']['humidity']
+    pressure = weather_data['main']['pressure']
+    description = weather_data['weather'][0]['description']
+    wind_speed = weather_data['wind']['speed']
+    feels_like = weather_data['main']['feels_like']
+    forecast = "Clear sky"  # Default forecast, can be updated based on more data if needed
+
+    # Prepare the input prompt for the LLM
+    prompt = f"Provide a detailed weather report for {city}:\n" \
+             f"Temperature: {temperature}°C\n" \
+             f"Humidity: {humidity}%\n" \
+             f"Pressure: {pressure} hPa\n" \
+             f"Description: {description}\n" \
+             f"Wind Speed: {wind_speed} m/s\n" \
+             f"Feels Like: {feels_like}°C\n" \
+             f"Forecast: {forecast}\n" \
+             f"Provide recommendations based on the weather conditions."
+
+    # Generate a detailed response using the LLM model
+    response = weather_model(prompt)
+    return response[0]['generated_text']
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/get_weather', methods=['POST'])
+def get_weather():
+    user_input = request.form['user_input']
+    
+    # Extract city name from the user input (simple extraction based on user query)
+    city = user_input.split('in')[-1].strip() if 'in' in user_input else 'Kolkata'  # Default to Kolkata
+    
+    # Fetch weather data
+    weather_data = get_weather_data(city)
+    
+    if weather_data.get('cod') != 200:
+        return jsonify({"error": "Unable to fetch weather data!"})
+    
+    # Generate a detailed weather report using the model
+    weather_report = generate_weather_report(weather_data)
+    
+    return jsonify({"response": weather_report})
+
+if __name__ == '__main__':
+    app.run(debug=True)
